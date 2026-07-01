@@ -37,8 +37,8 @@ Use esta lista como checklist. Marque cada item quando conseguir explicar a idei
 
 | Status | Conteúdo | Documentação | Evidência esperada |
 | --- | --- | --- | --- |
-| [  ] | Conceito de workspace no pnpm | [Workspace](https://pnpm.io/workspaces) | Explicar o que torna este repositório um workspace. |
-| [ ] | Arquivo `pnpm-workspace.yaml` | [pnpm-workspace.yaml](https://pnpm.io/pnpm-workspace_yaml) | Explicar por que `apps/*` e `packages/*` entram no monorepo. |
+- [ ] |  | Conceito de workspace no pnpm | [Workspace](https://pnpm.io/workspaces) | Explicar o que torna este repositório um workspace. |
+| - [ ] | Arquivo `pnpm-workspace.yaml` | [pnpm-workspace.yaml](https://pnpm.io/pnpm-workspace_yaml) | Explicar por que `apps/*` e `packages/*` entram no monorepo. |
 | [ ] | Protocolo `workspace:` | [Workspace protocol](https://pnpm.io/workspaces#workspace-protocol-workspace) | Explicar por que `@vale/shared` não vem do npm registry. |
 | [ ] | Comandos recursivos | [pnpm -r, --recursive](https://pnpm.io/cli/recursive) | Rodar `pnpm --recursive build` e observar quais pacotes executam build. |
 | [ ] | Filtros por pacote | [Filtering](https://pnpm.io/filtering) | Rodar `pnpm --filter @vale/shared build` e comparar com o build recursivo. |
