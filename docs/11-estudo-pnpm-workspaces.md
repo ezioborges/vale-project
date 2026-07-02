@@ -44,9 +44,9 @@ Use esta lista como checklist. Marque cada item quando conseguir explicar a idei
 | [x] | Filtros por pacote | [Filtering](https://pnpm.io/filtering) | Rodar `pnpm --filter @vale/shared build` e comparar com o build recursivo. |
 | [x] | Scripts por pacote | [pnpm run](https://pnpm.io/cli/run) | Identificar quais scripts existem na raiz, API, web e shared. |
 | [x] | Lockfile e instalação reproduzível | [pnpm install](https://pnpm.io/cli/install) | Explicar por que o `pnpm-lock.yaml` deve ser versionado. |
-| [ ] | Configurações do pnpm no workspace | [Settings](https://pnpm.io/settings) | Saber onde ficariam configurações futuras do pnpm. |
-| [ ] | Corepack e `packageManager` | [Corepack](https://nodejs.org/api/corepack.html) | Explicar por que a raiz declara `pnpm@10.12.1`. |
-| [ ] | Quando não adicionar outra ferramenta | [Catalogs](https://pnpm.io/catalogs) | Entender recursos nativos antes de trazer Nx/Turborepo. |
+| [x] | Configurações do pnpm no workspace | [Settings](https://pnpm.io/settings) | Saber onde ficariam configurações futuras do pnpm. |
+| [x] | Corepack e `packageManager` | [Corepack](https://nodejs.org/api/corepack.html) | Explicar por que a raiz declara `pnpm@10.12.1`. |
+| [x] | Quando não adicionar outra ferramenta | [Catalogs](https://pnpm.io/catalogs) | Entender recursos nativos antes de trazer Nx/Turborepo. |
 
 ## Roteiro Prático
 
