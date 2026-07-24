@@ -1,21 +1,52 @@
 'use client';
 
 import { PublicRegistrationRole } from '@vale/shared';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { loginUser, registerUser, verifyEmail } from '@/lib/api';
+import {
+  forgotPassword,
+  getRegistrationConfig,
+  loginUser,
+  registerUser,
+} from '@/lib/api';
 
-type Mode = 'register' | 'login';
+type Mode = 'register' | 'login' | 'forgot';
+
+const fallbackVersions = {
+  terms: 'terms-2026-07-24',
+  privacy: 'privacy-2026-07-24',
+  guidelines: 'guidelines-2026-07-24',
+};
 
 export function AuthPanel() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>('register');
   const [role, setRole] = useState<PublicRegistrationRole>('candidate');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [verificationToken, setVerificationToken] = useState('');
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [acceptedGuidelines, setAcceptedGuidelines] = useState(false);
+  const [versions, setVersions] = useState(fallbackVersions);
+  const [isRegistrationConfigReady, setIsRegistrationConfigReady] =
+    useState(false);
   const [message, setMessage] = useState('Pronto para começar.');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    void getRegistrationConfig()
+      .then((config) => {
+        setVersions(config.legalDocuments);
+        setIsRegistrationConfigReady(true);
+      })
+      .catch(() => {
+        setMessage(
+          'Não foi possível carregar as versões legais atuais. Tente novamente.',
+        );
+      });
+  }, []);
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,42 +54,44 @@ export function AuthPanel() {
 
     try {
       if (mode === 'register') {
-        if (!acceptedTerms) {
-          setMessage('É necessário aceitar os termos atuais para criar conta.');
+        if (!isRegistrationConfigReady) {
+          setMessage('Aguarde o carregamento dos documentos atuais.');
+          return;
+        }
+
+        if (!acceptedTerms || !acceptedPrivacy || !acceptedGuidelines) {
+          setMessage('Os três documentos obrigatórios precisam ser aceitos.');
           return;
         }
 
         const response = await registerUser({
+          displayName,
           email,
           password,
           role,
-          acceptedTermsVersion: 'mvp-2026-06-13',
+          acceptedTermsVersion: versions.terms,
+          acceptedPrivacyVersion: versions.privacy,
+          acceptedGuidelinesVersion: versions.guidelines,
           acceptTerms: true,
+          acceptPrivacy: true,
+          acceptGuidelines: true,
         });
-        setVerificationToken(response.devEmailVerificationToken ?? '');
-        setMessage(
-          `Cadastro criado como ${response.user.role}. Confirme o e-mail para ações sensíveis.`,
-        );
-      } else {
-        const response = await loginUser({ email, password });
-        setMessage(`Sessão iniciada para ${response.user.email}.`);
+        router.push(response.user.initialPath);
+        return;
       }
+
+      if (mode === 'forgot') {
+        await forgotPassword({ email });
+        setMessage(
+          'Se o e-mail estiver cadastrado, você receberá um link de uso único.',
+        );
+        return;
+      }
+
+      const response = await loginUser({ email, password });
+      router.push(response.user.initialPath);
     } catch {
       setMessage('Não foi possível concluir a ação. Confira os dados.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function submitVerification(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const user = await verifyEmail(verificationToken);
-      setMessage(`E-mail confirmado. Status atual: ${user.status}.`);
-    } catch {
-      setMessage('Token de verificação inválido ou expirado.');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,27 +126,42 @@ export function AuthPanel() {
 
       <form className="auth-form" onSubmit={submitAuth}>
         {mode === 'register' ? (
-          <fieldset className="role-options">
-            <legend>Fluxo</legend>
+          <>
+            <fieldset className="role-options">
+              <legend>Quero usar o Vale como</legend>
+              <label>
+                <input
+                  checked={role === 'candidate'}
+                  name="role"
+                  onChange={() => setRole('candidate')}
+                  type="radio"
+                />
+                Candidato
+              </label>
+              <label>
+                <input
+                  checked={role === 'employer'}
+                  name="role"
+                  onChange={() => setRole('employer')}
+                  type="radio"
+                />
+                Contratante
+              </label>
+            </fieldset>
+
             <label>
+              Nome
               <input
-                checked={role === 'candidate'}
-                name="role"
-                onChange={() => setRole('candidate')}
-                type="radio"
+                autoComplete="name"
+                maxLength={120}
+                minLength={2}
+                onChange={(event) => setDisplayName(event.target.value)}
+                required
+                type="text"
+                value={displayName}
               />
-              Candidato
             </label>
-            <label>
-              <input
-                checked={role === 'employer'}
-                name="role"
-                onChange={() => setRole('employer')}
-                type="radio"
-              />
-              Contratante
-            </label>
-          </fieldset>
+          </>
         ) : null}
 
         <label>
@@ -127,55 +175,90 @@ export function AuthPanel() {
           />
         </label>
 
-        <label>
-          Senha
-          <input
-            autoComplete={
-              mode === 'register' ? 'new-password' : 'current-password'
-            }
-            minLength={mode === 'register' ? 12 : 1}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-        </label>
+        {mode !== 'forgot' ? (
+          <label>
+            Senha
+            <input
+              autoComplete={
+                mode === 'register' ? 'new-password' : 'current-password'
+              }
+              minLength={mode === 'register' ? 12 : 1}
+              maxLength={128}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          </label>
+        ) : null}
 
         {mode === 'register' ? (
-          <label className="checkbox-row">
-            <input
-              checked={acceptedTerms}
-              onChange={(event) => setAcceptedTerms(event.target.checked)}
-              required
-              type="checkbox"
-            />
-            Aceito os termos da versão mvp-2026-06-13.
-          </label>
+          <div className="consent-list">
+            <label className="checkbox-row">
+              <input
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              Aceito os termos de uso ({versions.terms}).
+            </label>
+            <label className="checkbox-row">
+              <input
+                checked={acceptedPrivacy}
+                onChange={(event) => setAcceptedPrivacy(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              Aceito a política de privacidade ({versions.privacy}).
+            </label>
+            <label className="checkbox-row">
+              <input
+                checked={acceptedGuidelines}
+                onChange={(event) =>
+                  setAcceptedGuidelines(event.target.checked)
+                }
+                required
+                type="checkbox"
+              />
+              Aceito as diretrizes de inclusão ({versions.guidelines}).
+            </label>
+          </div>
         ) : null}
 
         <button
           className="primary-action"
-          disabled={isSubmitting}
+          disabled={
+            isSubmitting || (mode === 'register' && !isRegistrationConfigReady)
+          }
           type="submit"
         >
-          {mode === 'register' ? 'Criar conta' : 'Entrar'}
+          {mode === 'register'
+            ? 'Criar conta'
+            : mode === 'forgot'
+              ? 'Enviar link'
+              : 'Entrar'}
         </button>
       </form>
 
-      <form className="verification-form" onSubmit={submitVerification}>
-        <label>
-          Token de e-mail
-          <input
-            onChange={(event) => setVerificationToken(event.target.value)}
-            placeholder="Disponível no provider fake em dev"
-            type="text"
-            value={verificationToken}
-          />
-        </label>
-        <button disabled={!verificationToken || isSubmitting} type="submit">
-          Confirmar e-mail
+      {mode === 'login' ? (
+        <button
+          className="text-action"
+          onClick={() => setMode('forgot')}
+          type="button"
+        >
+          Esqueci minha senha
         </button>
-      </form>
+      ) : null}
+      {mode === 'forgot' ? (
+        <button
+          className="text-action"
+          onClick={() => setMode('login')}
+          type="button"
+        >
+          Voltar ao login
+        </button>
+      ) : null}
 
       <p className="auth-message">{message}</p>
     </div>

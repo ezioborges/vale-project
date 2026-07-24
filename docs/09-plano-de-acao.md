@@ -26,8 +26,8 @@ Por isso, o MVP não deve ser tratado apenas como um portal de vagas. O núcleo 
 | Fase | Estado verificado | Próximo marco |
 | --- | --- | --- |
 | 0 — Fundação técnica | Concluída | reforçar gates de CI sem reabrir a fase |
-| 1 — Identidade, termos e RBAC | Em fechamento | recuperação de senha, e-mail, integração/E2E e rate limiting |
-| 2 — Perfis e privacidade | Não iniciada | iniciar após o fechamento da Fase 1 |
+| 1 — Identidade, termos e RBAC | Concluída | preservar os contratos durante as fases seguintes |
+| 2 — Perfis e privacidade | Não iniciada | próximo marco autorizado |
 | 3 — Vagas, busca e candidaturas | Não iniciada | depende de perfis e visibilidade |
 | 4 — Denúncias, administração e auditoria | Não iniciada | depende dos fluxos de negócio anteriores |
 

@@ -59,6 +59,7 @@ Comandos de qualidade:
 ```bash
 pnpm lint
 pnpm test
+pnpm test:integration
 pnpm build
 ```
 
@@ -105,6 +106,6 @@ vale-project/
 
 ## Status
 
-Fase atual: Fase 1 em fechamento. A Fase 0 esta concluida; cadastro, sessao, verificacao de e-mail,
-termos e RBAC ja possuem implementacao inicial. Recuperacao de senha, provider de e-mail, testes de
-integracao/E2E e rate limiting ainda precisam ser concluidos antes da Fase 2.
+Fase atual: Fase 1 concluida e Fase 2 ainda nao iniciada. Identidade, consentimentos separados,
+sessao por cookies, recuperacao de senha, verificacao de e-mail, RBAC, estados de conta, rate
+limiting e auditoria administrativa minima possuem cobertura automatizada com PostgreSQL real.

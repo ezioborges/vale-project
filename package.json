@@ -8,6 +8,7 @@
     "build": "corepack pnpm --recursive build",
     "lint": "corepack pnpm --recursive lint",
     "test": "corepack pnpm --recursive test",
+    "test:integration": "corepack pnpm --filter @vale/api test:integration",
     "typecheck": "corepack pnpm --recursive typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",

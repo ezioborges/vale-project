@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { LegalDocumentType } from '@vale/shared';
 import { Repository } from 'typeorm';
 
 import { TermAcceptance } from './term-acceptance.entity';
 
 export type AcceptTermsInput = {
   userId: string;
+  documentType: LegalDocumentType;
   version: string;
   ipAddress?: string | null;
   userAgent?: string | null;
@@ -21,6 +23,7 @@ export class TermsService {
   async accept(input: AcceptTermsInput): Promise<TermAcceptance> {
     const existing = await this.termAcceptanceRepository.findOneBy({
       userId: input.userId,
+      documentType: input.documentType,
       version: input.version,
     });
 
@@ -30,6 +33,7 @@ export class TermsService {
 
     const acceptance = this.termAcceptanceRepository.create({
       userId: input.userId,
+      documentType: input.documentType,
       version: input.version,
       ipAddress: input.ipAddress ?? null,
       userAgent: input.userAgent ?? null,
@@ -38,7 +42,35 @@ export class TermsService {
     return this.termAcceptanceRepository.save(acceptance);
   }
 
-  async hasAcceptedVersion(userId: string, version: string): Promise<boolean> {
-    return this.termAcceptanceRepository.existsBy({ userId, version });
+  async acceptAll(
+    userId: string,
+    versions: Record<LegalDocumentType, string>,
+    metadata: Pick<AcceptTermsInput, 'ipAddress' | 'userAgent'>,
+  ): Promise<void> {
+    await Promise.all(
+      Object.entries(versions).map(([documentType, version]) =>
+        this.accept({
+          userId,
+          documentType: documentType as LegalDocumentType,
+          version,
+          ...metadata,
+        }),
+      ),
+    );
+  }
+
+  async hasAcceptedCurrentDocuments(
+    userId: string,
+    versions: Record<LegalDocumentType, string>,
+  ): Promise<boolean> {
+    const accepted = await this.termAcceptanceRepository.countBy(
+      Object.entries(versions).map(([documentType, version]) => ({
+        userId,
+        documentType: documentType as LegalDocumentType,
+        version,
+      })),
+    );
+
+    return accepted === Object.keys(versions).length;
   }
 }

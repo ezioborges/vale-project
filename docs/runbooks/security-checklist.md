@@ -9,7 +9,8 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] access token permanece curto e refresh token não é persistido em texto puro;
 - [ ] rotação revoga o refresh token anterior e retry não cria sessão ambígua;
 - [ ] logout e suspensão invalidam as ações que o fluxo promete bloquear;
-- [ ] tokens de verificação e recuperação são de uso único, expiram e não aparecem em logs;
+- [ ] tokens de verificação e recuperação são de uso único, expiram e não aparecem em logs de
+      ambientes remotos; o provider `log` fica restrito ao desenvolvimento local;
 - [ ] cookies de produção são HttpOnly, `Secure`, têm `SameSite` e escopo mínimo;
 - [ ] login, cadastro, recuperação e reenvio possuem rate limiting adequado.
 

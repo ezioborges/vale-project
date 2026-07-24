@@ -17,6 +17,9 @@ export const userStatuses = [
 ] as const;
 export type UserStatus = (typeof userStatuses)[number];
 
+export const legalDocumentTypes = ['terms', 'privacy', 'guidelines'] as const;
+export type LegalDocumentType = (typeof legalDocumentTypes)[number];
+
 export const jobStatuses = [
   'draft',
   'pending_review',

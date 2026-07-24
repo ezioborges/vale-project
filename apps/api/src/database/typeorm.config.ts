@@ -15,6 +15,7 @@ export function getTypeOrmOptions(): TypeOrmModuleOptions {
     autoLoadEntities: true,
     synchronize: false,
     migrationsRun: false,
-    migrations: ['dist/database/migrations/*.js'],
+    migrations:
+      env.NODE_ENV === 'test' ? [] : ['dist/database/migrations/*.js'],
   };
 }

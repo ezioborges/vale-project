@@ -28,6 +28,10 @@ export class RefreshToken {
   @Column({ name: 'token_hash', type: 'text' })
   tokenHash!: string;
 
+  @Index()
+  @Column({ name: 'family_id', type: 'uuid' })
+  familyId!: string;
+
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt!: Date;
 

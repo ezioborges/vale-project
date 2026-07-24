@@ -2,116 +2,103 @@
 
 - Data da verificação: 2026-07-24
 - Plano de origem: [`../09-plano-de-acao.md`](../09-plano-de-acao.md)
-- Estado: em fechamento; implementação funcional avançada com critérios obrigatórios pendentes
+- Estado: concluída
 
 ## Escopo entregue
 
-### Conta e cadastro público
+### Identidade, consentimento e onboarding
 
-- entidade `User` com e-mail normalizado, hash Argon2, papel, estado, datas operacionais e soft
-  delete;
-- cadastro público limitado a `candidate` e `employer`;
-- índice único de e-mail para contas não excluídas;
-- escolha de papel e formulário funcional na página inicial;
-- criação opcional e idempotente do primeiro admin apenas fora de produção.
+- cadastro público restrito a `candidate` e `employer`, com nome obrigatório e e-mail normalizado;
+- senha com Argon2, índice único de e-mail e soft delete;
+- termos de uso, política de privacidade e diretrizes de inclusão tratados como três documentos
+  obrigatórios e versionados de forma independente;
+- evidência de cada aceite com usuário, documento, versão, data, IP e user agent;
+- versões vigentes publicadas por `GET /auth/registration-config`;
+- onboarding e destino inicial distintos para candidato e contratante;
+- destinos próprios para coordenação, administração e conta indisponível.
 
-### Sessão
+### E-mail e recuperação de senha
 
-- login com access token curto;
-- access e refresh tokens enviados em cookies HttpOnly, `SameSite=Lax` e `Secure` em produção;
-- refresh token opaco, persistido apenas como hash, rotativo e individualmente revogável;
-- logout idempotente com revogação do refresh token e remoção dos cookies;
-- bloqueio de login e refresh para contas suspensas ou desabilitadas.
+- contrato `EmailSender` desacoplado dos controllers;
+- provider `log` somente local e provider HTTP remoto com contrato documentado;
+- bootstrap de produção rejeita o provider local ou credenciais incompletas;
+- verificação de e-mail e recuperação de senha usam tokens opacos, armazenados como hash, de uso
+  único e com expiração;
+- solicitação de reset responde de forma indistinguível para e-mail existente ou ausente;
+- troca de senha incrementa a versão de autenticação e revoga access e refresh tokens existentes;
+- tokens de desenvolvimento não aparecem mais na resposta HTTP.
 
-### E-mail e consentimento
+### Sessão e proteção operacional
 
-- token de verificação de e-mail opaco, com hash, expiração e uso único;
-- token exposto somente fora de produção para viabilizar o provider fake local;
-- aceite versionado de termos com data, usuário, IP e user agent mínimos;
-- guards reutilizáveis para exigir e-mail confirmado e versão atual dos termos.
+- access e refresh tokens somente em cookies HttpOnly, `SameSite=Lax` e `Secure` em produção;
+- nenhuma resposta pública de autenticação contém access ou refresh token;
+- refresh tokens rotativos organizados em famílias;
+- rotação feita em transação com lock pessimista no PostgreSQL;
+- duas renovações concorrentes produzem uma sucessora no máximo;
+- reutilização revoga toda a família e responde `401`;
+- rate limiting persistido no PostgreSQL em cadastro, login, refresh, verificação e recuperação;
+- produção falha no bootstrap quando JWT, CORS ou credenciais de banco usam defaults locais.
 
-### Autorização
+### RBAC, estados e auditoria
 
-- autenticação e RBAC aplicados como guards globais no NestJS;
-- endpoint de alteração de papel restrito a admin com e-mail confirmado e termos atuais;
-- middleware do Next.js para melhorar a experiência nas rotas `/app` e `/admin`;
-- backend preservado como fonte de verdade da autorização.
+- guards globais mantêm o backend como fonte de verdade;
+- promoção de papel e alteração de status exigem admin, e-mail verificado e documentos atuais;
+- máquina de estados impede ativar conta sem e-mail confirmado;
+- confirmação de e-mail ativa apenas `pending_email`; contas `suspended` e `disabled` preservam o
+  bloqueio;
+- middleware do frontend protege rotas por papel e estado;
+- promoção, suspensão, desativação e reativação registram ator, alvo, motivo, contexto e data;
+- auditoria consultável e demais eventos continuam no escopo da Fase 4.
 
-## Rastreabilidade dos requisitos
+## Rastreabilidade
 
-| Requisito | Estado | Evidência ou pendência |
+| Requisito | Estado | Evidência |
 | --- | --- | --- |
-| RF-01/RN-01 | Atendido | DTO e schema aceitam apenas `candidate` e `employer` |
-| RF-02 | Atendido | seletor de fluxo em `AuthPanel` |
-| RF-03 | Parcial | papel inicial é persistido; onboarding e dashboards distintos ainda não existem |
-| RF-04 | Parcial | e-mail, senha e aceite existem; nome e aceites separados ainda faltam |
-| RF-05 | Atendido | normalização, consulta prévia e índice parcial único |
-| RF-06/RN-09 | Parcial | verificação e guard existem; envio real de e-mail ainda não |
-| RF-07 | Parcial | login, logout e renovação existem; recuperação de senha ainda não |
-| RF-08/RN-05 | Atendido | guards/decorators e autorização global no backend |
-| RF-09 | Parcial | rotas base protegidas; falta completar navegação e testes por papel/estado |
-| RF-10/RN-02 | Atendido na API | apenas admin acessa a alteração de papel |
-| RN-06/RN-07 | Atendido no modelo atual | aceite versionado com metadados mínimos |
-| RN-08 | Atendido como infraestrutura | `TermsGuard` exige a versão configurada nos endpoints decorados |
-| RNF-01–03 | Atendido | Argon2, access curto, refresh com hash, rotação e revogação |
-| RNF-04 | Não atendido | login e cadastro ainda não possuem rate limiting |
-| RNF-05/RNF-10 | Atendido | DTOs, pipe global e guards no backend |
+| RF-01–05 | Atendido | DTOs, schemas, `User`, nome e cadastro público por papel |
+| RF-06/RN-09 | Atendido | provider de e-mail, token único e guard de verificação |
+| RF-07 | Atendido | login, logout, refresh e recuperação de senha |
+| RF-08–10/RN-01–05 | Atendido | guards globais e testes RBAC positivo/negativo |
+| RN-06–08 | Atendido | três aceites versionados e `TermsGuard` |
+| RN-34–38 | Atendido no corte da fase | bloqueio por estado e auditoria administrativa mínima |
+| RNF-01–03 | Atendido | Argon2, access curto, refresh com hash e rotação transacional |
+| RNF-04 | Atendido | rate limiting persistido com resposta `429` e `Retry-After` |
+| RNF-05/RNF-10 | Atendido | DTOs, pipe global, cookies e guards no backend |
 
-## Evidências automatizadas existentes
+## Evidências automatizadas
 
-- cadastro como candidato e rejeição de e-mail duplicado;
-- rejeição de versão antiga dos termos;
-- login com senha inválida e válida;
-- rotação e revogação de refresh token;
-- consumo único do token de verificação;
-- negativas dos guards de papel, e-mail confirmado e termos;
-- proteção de conta suspensa ou desabilitada implementada no guard de autenticação.
+A suíte cobre:
 
-## Homologação local observada
+- registro dos três consentimentos no PostgreSQL;
+- cadastro → verificação → login → refresh → logout por cookies;
+- recuperação de senha de uso único e revogação de sessões;
+- RBAC negativo e positivo no endpoint de promoção;
+- auditoria de promoção, suspensão e desativação;
+- verificação de e-mail sem reativação de conta suspensa;
+- refreshes concorrentes e detecção de reutilização da família;
+- rate limiting de login;
+- roteamento frontend positivo e negativo por papel e estado;
+- rejeição dos defaults locais no bootstrap de produção.
 
-Em 2026-07-24, um fluxo real foi executado contra PostgreSQL 16 temporário após aplicar as duas
-migrations:
+Comando reproduzível:
 
-| Operação | Resultado |
-| --- | --- |
-| cadastro de candidato | `201` |
-| verificação do e-mail | `200`, conta alterada para `active` |
-| login | `200` |
-| rotação do refresh token | `200`, novo token emitido |
-| reutilização do refresh anterior | `401` |
-| logout | `204` |
-| uso do refresh revogado | `401` |
+```bash
+pnpm test:integration
+```
 
-A homologação confirma o caminho principal, mas não substitui os testes de integração e E2E
-automatizados exigidos pela definição de pronto.
+O comando sobe `postgres-test` no Compose, recria o banco, executa as três migrations e roda a suíte
+com controllers NestJS e Supertest. O banco de desenvolvimento não é utilizado.
 
-## O que falta para concluir a fase
+## Decisões encerradas
 
-Prioridade de fechamento:
+1. Consentimentos são distintos, obrigatórios e versionados por documento.
+2. O provider remoto selecionado pelo código é o adapter HTTP; a produção precisa informar endpoint
+   e token do gateway escolhido.
+3. Reutilização de refresh token revoga toda a família e retorna `401`.
+4. Verificação de e-mail nunca altera `suspended` ou `disabled`.
+5. O navegador recebe tokens apenas em cookies HttpOnly.
 
-1. implementar recuperação de senha com token de uso único e expiração curta;
-2. criar um contrato de envio de e-mail e um provider fake/log separado da resposta HTTP; selecionar
-   o provider remoto antes de produção;
-3. fazer o bootstrap falhar em produção quando `JWT_ACCESS_SECRET`, origem CORS ou credenciais de
-   banco ainda estiverem nos valores locais padrão;
-4. coletar o nome exigido no cadastro e definir se termos, privacidade e diretrizes serão um
-   documento versionado ou consentimentos distintos;
-5. concluir onboarding e destino inicial específicos para candidato e contratante;
-6. adicionar testes de integração com controllers e PostgreSQL real, além de E2E dos fluxos
-   cadastro → verificação → login → refresh → logout;
-7. cobrir RBAC positivo e negativo no endpoint de promoção e proteção frontend por papel/estado;
-8. definir e testar a máquina de estados da conta, impedindo que verificação de e-mail reative uma
-   conta suspensa ou desabilitada;
-9. tornar a rotação do refresh token transacional para impedir duas sessões sucessoras em refreshes
-   concorrentes e definir a resposta à reutilização de token;
-10. aplicar rate limiting em cadastro, login e emissão de tokens;
-11. registrar auditoria mínima para promoção, suspensão e desativação;
-12. parar de retornar o access token no corpo quando todos os clientes suportarem o fluxo por cookie,
-   reduzindo a superfície de exposição no navegador.
+## Próximo marco
 
-## Decisão de sequência
-
-A Fase 2 ainda não deve ser tratada como iniciada. O próximo marco é fechar os itens 1 a 10 acima,
-pois perfis, uploads, vagas e candidaturas dependerão diretamente de identidade, consentimento e
-autorização confiáveis. Auditoria completa permanece na Fase 4, mas alterações administrativas da
-Fase 1 já precisam produzir evidência mínima antes do piloto.
+A Fase 2 permanece não iniciada. Ela pode começar somente a partir deste fechamento, com perfis
+mínimos e controles de visibilidade, sem reabrir as decisões de identidade, consentimento e
+autorização estabelecidas aqui.

@@ -39,8 +39,8 @@ describe('authorization guards', () => {
   it('blocks endpoints when current terms are absent', async () => {
     const guard = new TermsGuard(
       { getAllAndOverride: jest.fn(() => true) } as unknown as Reflector,
-      { get: jest.fn(() => 'mvp-2026-06-13') } as never,
-      { hasAcceptedVersion: jest.fn(async () => false) } as never,
+      { get: jest.fn((key: string) => key) } as never,
+      { hasAcceptedCurrentDocuments: jest.fn(async () => false) } as never,
     );
 
     await expect(

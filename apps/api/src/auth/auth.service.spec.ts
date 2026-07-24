@@ -2,74 +2,35 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 
+import { EmailService } from '../email/email.service';
 import { TermsService } from '../terms/terms.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { EmailVerificationToken } from './email-verification-token.entity';
-import { RefreshToken } from './refresh-token.entity';
-
-class MemoryRepository<T extends { id?: string }> {
-  items: T[] = [];
-
-  create(input: Partial<T>): T {
-    return input as T;
-  }
-
-  async save(input: T): Promise<T> {
-    if (!input.id) {
-      input.id = `id-${this.items.length + 1}`;
-      this.items.push(input);
-      return input;
-    }
-
-    const index = this.items.findIndex((item) => item.id === input.id);
-    if (index >= 0) {
-      this.items[index] = input;
-      return input;
-    }
-
-    this.items.push(input);
-    return input;
-  }
-
-  async findOne(options: {
-    where: Partial<T>;
-  }): Promise<(T & { user?: User }) | null> {
-    return this.findOneBy(options.where);
-  }
-
-  async findOneBy(where: Partial<T>): Promise<(T & { user?: User }) | null> {
-    const item = this.items.find((candidate) =>
-      Object.entries(where).every(([key, value]) => {
-        if (value && typeof value === 'object' && '@instanceof' in value) {
-          return candidate[key as keyof T] === null;
-        }
-
-        return candidate[key as keyof T] === value;
-      }),
-    );
-
-    if (!item) {
-      return null;
-    }
-
-    if ('userId' in item) {
-      return { ...item, user: testUser } as T & { user: User };
-    }
-
-    return item;
-  }
-}
 
 const testUser = {
-  id: 'user-1',
+  id: '9d468807-fd6d-4be7-b16d-c067f17c0501',
+  displayName: 'Pessoa Candidata',
   email: 'candidate@example.com',
+  passwordHash: '',
   role: 'candidate',
   status: 'pending_email',
   emailVerifiedAt: null,
   lastLoginAt: null,
 } as User;
+
+const validRegistration = {
+  displayName: 'Pessoa Candidata',
+  email: 'candidate@example.com',
+  password: 'strong-password',
+  role: 'candidate' as const,
+  acceptedTermsVersion: 'terms-current',
+  acceptedPrivacyVersion: 'privacy-current',
+  acceptedGuidelinesVersion: 'guidelines-current',
+  acceptTerms: true as const,
+  acceptPrivacy: true as const,
+  acceptGuidelines: true as const,
+};
 
 describe('AuthService', () => {
   const configService = {
@@ -77,9 +38,11 @@ describe('AuthService', () => {
       const values: Record<string, string | number> = {
         EMAIL_VERIFICATION_TTL_HOURS: 24,
         JWT_ACCESS_TTL_SECONDS: 900,
-        NODE_ENV: 'test',
+        LEGAL_GUIDELINES_VERSION: 'guidelines-current',
+        LEGAL_PRIVACY_VERSION: 'privacy-current',
+        LEGAL_TERMS_VERSION: 'terms-current',
+        PASSWORD_RESET_TTL_MINUTES: 15,
         REFRESH_TOKEN_TTL_DAYS: 30,
-        TERMS_CURRENT_VERSION: 'mvp-2026-06-13',
       };
 
       return values[key];
@@ -91,78 +54,92 @@ describe('AuthService', () => {
   const usersService = {
     createPublicUser: jest.fn(async () => testUser),
     findByEmail: jest.fn(),
-    markEmailVerified: jest.fn(async () => ({
-      ...testUser,
-      status: 'active',
-      emailVerifiedAt: new Date('2026-06-13T00:00:00.000Z'),
-    })),
+    findById: jest.fn(),
     toResponse: jest.fn((user: User) => ({
       id: user.id,
+      displayName: user.displayName,
       email: user.email,
       role: user.role,
       status: user.status,
       emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
+      initialPath: '/onboarding/candidato',
     })),
     updateLastLogin: jest.fn(),
   } as unknown as UsersService;
   const termsService = {
-    accept: jest.fn(),
+    acceptAll: jest.fn(),
   } as unknown as TermsService;
+  const emailService = {
+    sendEmailVerification: jest.fn(),
+    sendPasswordReset: jest.fn(),
+  } as unknown as EmailService;
 
-  let refreshRepository: MemoryRepository<RefreshToken>;
-  let emailRepository: MemoryRepository<EmailVerificationToken>;
+  const createRepository = () => ({
+    create: jest.fn((input: object) => input),
+    save: jest.fn(async (input: object) => ({ id: 'token-id', ...input })),
+    update: jest.fn(),
+    findOneBy: jest.fn(),
+  });
+
+  let refreshRepository: ReturnType<typeof createRepository>;
+  let emailRepository: ReturnType<typeof createRepository>;
+  let passwordRepository: ReturnType<typeof createRepository>;
   let service: AuthService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    refreshRepository = new MemoryRepository<RefreshToken>();
-    emailRepository = new MemoryRepository<EmailVerificationToken>();
+    refreshRepository = createRepository();
+    emailRepository = createRepository();
+    passwordRepository = createRepository();
     service = new AuthService(
       configService as never,
       jwtService,
       usersService,
       termsService,
+      emailService,
+      {} as never,
       refreshRepository as never,
       emailRepository as never,
+      passwordRepository as never,
     );
   });
 
-  it('registers only after the current terms version is accepted', async () => {
+  it('requires and records the three current legal documents', async () => {
     await expect(
       service.register(
-        {
-          email: 'candidate@example.com',
-          password: 'strong-password',
-          role: 'candidate',
-          acceptTerms: true,
-          acceptedTermsVersion: 'old-version',
-        },
+        { ...validRegistration, acceptedPrivacyVersion: 'outdated' },
         {},
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    const response = await service.register(
-      {
-        email: 'candidate@example.com',
-        password: 'strong-password',
-        role: 'candidate',
-        acceptTerms: true,
-        acceptedTermsVersion: 'mvp-2026-06-13',
-      },
-      { ipAddress: '127.0.0.1', userAgent: 'jest' },
-    );
+    const response = await service.register(validRegistration, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
 
     expect(usersService.createPublicUser).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'candidate' }),
+      expect.objectContaining({
+        displayName: 'Pessoa Candidata',
+        role: 'candidate',
+      }),
     );
-    expect(termsService.accept).toHaveBeenCalledWith(
-      expect.objectContaining({ version: 'mvp-2026-06-13' }),
+    expect(termsService.acceptAll).toHaveBeenCalledWith(
+      testUser.id,
+      {
+        terms: 'terms-current',
+        privacy: 'privacy-current',
+        guidelines: 'guidelines-current',
+      },
+      expect.objectContaining({ userAgent: 'jest' }),
     );
-    expect(response.devEmailVerificationToken).toBeDefined();
-    expect(refreshRepository.items).toHaveLength(1);
+    expect(emailService.sendEmailVerification).toHaveBeenCalledWith(
+      expect.objectContaining({ email: testUser.email }),
+    );
+    expect(response).not.toHaveProperty('devEmailVerificationToken');
+    expect(refreshRepository.save).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects invalid login and accepts valid password', async () => {
+  it('rejects invalid login and accepts a valid password', async () => {
     const passwordHash = await argon2.hash('correct-password');
     jest.mocked(usersService.findByEmail).mockResolvedValue({
       ...testUser,
@@ -182,49 +159,17 @@ describe('AuthService', () => {
     );
 
     expect(response.accessToken).toBe('access-token');
-    expect(refreshRepository.items).toHaveLength(1);
+    expect(refreshRepository.save).toHaveBeenCalledTimes(1);
   });
 
-  it('rotates refresh tokens and revokes logout token', async () => {
-    const login = await service.register(
-      {
-        email: 'candidate@example.com',
-        password: 'strong-password',
-        role: 'candidate',
-        acceptTerms: true,
-        acceptedTermsVersion: 'mvp-2026-06-13',
-      },
-      {},
-    );
+  it('does not reveal whether a password-reset account exists', async () => {
+    jest.mocked(usersService.findByEmail).mockResolvedValueOnce(null);
+    const absent = await service.requestPasswordReset('absent@example.com');
 
-    const refreshed = await service.refresh(login.refreshToken, {
-      ipAddress: '127.0.0.1',
-    });
+    jest.mocked(usersService.findByEmail).mockResolvedValueOnce(testUser);
+    const present = await service.requestPasswordReset(testUser.email);
 
-    expect(refreshed.refreshToken).not.toBe(login.refreshToken);
-    expect(refreshRepository.items[0]?.revokedAt).toBeInstanceOf(Date);
-
-    await service.logout(refreshed.refreshToken, '127.0.0.1');
-    expect(refreshRepository.items[1]?.revokedAt).toBeInstanceOf(Date);
-  });
-
-  it('verifies email tokens once', async () => {
-    const response = await service.register(
-      {
-        email: 'candidate@example.com',
-        password: 'strong-password',
-        role: 'candidate',
-        acceptTerms: true,
-        acceptedTermsVersion: 'mvp-2026-06-13',
-      },
-      {},
-    );
-
-    const user = await service.verifyEmail(response.devEmailVerificationToken!);
-
-    expect(user.status).toBe('active');
-    await expect(
-      service.verifyEmail(response.devEmailVerificationToken!),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(absent).toEqual(present);
+    expect(emailService.sendPasswordReset).toHaveBeenCalledTimes(1);
   });
 });

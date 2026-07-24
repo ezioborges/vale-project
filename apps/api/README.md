@@ -39,13 +39,29 @@ Aplicacao backend NestJS do Vale Project.
 ```bash
 pnpm --filter @vale/api dev
 pnpm --filter @vale/api test
+pnpm --filter @vale/api test:integration
 pnpm --filter @vale/api build
 pnpm --filter @vale/api migration:run
 ```
 
-## Endpoints iniciais
+## Endpoints da Fase 1
 
-| Endpoint      | Uso                                          |
-| ------------- | -------------------------------------------- |
-| `GET /health` | Verifica aplicacao e conexao com PostgreSQL. |
-| `GET /docs`   | Swagger local da API.                        |
+| Endpoint                                        | Uso                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| `GET /health`                                   | Verifica aplicação e conexão com PostgreSQL.                  |
+| `GET /docs`                                     | Swagger local da API.                                         |
+| `GET /auth/registration-config`                 | Publica as versões legais exigidas no cadastro.               |
+| `POST /auth/register`                           | Cadastra candidato ou contratante e inicia sessão por cookie. |
+| `POST /auth/verify-email`                       | Consome o token de e-mail uma única vez.                      |
+| `POST /auth/login`, `/refresh`, `/logout`       | Gerencia a sessão rotativa por cookies HttpOnly.              |
+| `POST /auth/forgot-password`, `/reset-password` | Recupera senha sem revelar a existência da conta.             |
+| `PATCH /users/:id/role`                         | Altera papel com RBAC admin e auditoria.                      |
+| `PATCH /users/:id/status`                       | Suspende, desativa ou reativa com auditoria.                  |
+
+## Contrato do provider HTTP de e-mail
+
+Em produção, `EMAIL_PROVIDER=http` é obrigatório. A API envia `POST` para
+`EMAIL_HTTP_ENDPOINT`, com `Authorization: Bearer <EMAIL_HTTP_TOKEN>` e JSON contendo
+`from`, `to`, `subject`, `text` e `html`. Qualquer resposta fora de `2xx` é falha de entrega.
+O adapter remoto ou gateway escolhido deve aceitar esse contrato; o provider `log` é rejeitado no
+bootstrap de produção.

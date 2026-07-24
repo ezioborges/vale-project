@@ -60,6 +60,10 @@ export class JwtAuthGuard implements CanActivate {
       throw new ForbiddenException('User account cannot access this resource.');
     }
 
+    if (payload.authVersion !== user.authVersion) {
+      throw new UnauthorizedException('Access token has been revoked.');
+    }
+
     request.user = user;
     return true;
   }

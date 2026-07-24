@@ -40,16 +40,23 @@ export class TermsGuard implements CanActivate {
       throw new ForbiddenException('Accepted terms are required.');
     }
 
-    const version = this.configService.get('TERMS_CURRENT_VERSION', {
-      infer: true,
-    });
-    const hasAccepted = await this.termsService.hasAcceptedVersion(
+    const hasAccepted = await this.termsService.hasAcceptedCurrentDocuments(
       userId,
-      version,
+      {
+        terms: this.configService.get('LEGAL_TERMS_VERSION', { infer: true }),
+        privacy: this.configService.get('LEGAL_PRIVACY_VERSION', {
+          infer: true,
+        }),
+        guidelines: this.configService.get('LEGAL_GUIDELINES_VERSION', {
+          infer: true,
+        }),
+      },
     );
 
     if (!hasAccepted) {
-      throw new ForbiddenException('Current terms must be accepted.');
+      throw new ForbiddenException(
+        'Current terms, privacy policy and guidelines must be accepted.',
+      );
     }
 
     return true;

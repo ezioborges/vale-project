@@ -43,7 +43,8 @@
 - as rotas existentes ainda não foram migradas para evitar misturar a entrega visual com mudanças
   funcionais da Fase 1;
 - testes automatizados de acessibilidade e regressão visual ainda não fazem parte do pipeline;
-- a linguagem e os consentimentos finais do cadastro dependem das decisões pendentes da Fase 1.
+- a referência visual ainda precisa incorporar os três consentimentos independentes definidos no
+  fechamento da Fase 1.
 
 ## Validações executadas
 

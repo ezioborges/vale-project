@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { Env } from '../common/config/env.validation';
+import { TermsService } from '../terms/terms.service';
 import { UsersService } from './users.service';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class AdminSeedService implements OnApplicationBootstrap {
   constructor(
     private readonly configService: ConfigService<Env, true>,
     private readonly usersService: UsersService,
+    private readonly termsService: TermsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -36,7 +38,20 @@ export class AdminSeedService implements OnApplicationBootstrap {
       return;
     }
 
-    await this.usersService.createSeedAdmin(email, password);
+    const admin = await this.usersService.createSeedAdmin(email, password);
+    await this.termsService.acceptAll(
+      admin.id,
+      {
+        terms: this.configService.get('LEGAL_TERMS_VERSION', { infer: true }),
+        privacy: this.configService.get('LEGAL_PRIVACY_VERSION', {
+          infer: true,
+        }),
+        guidelines: this.configService.get('LEGAL_GUIDELINES_VERSION', {
+          infer: true,
+        }),
+      },
+      { userAgent: 'local-admin-seed' },
+    );
     this.logger.log(`Seed admin available for ${email}.`);
   }
 }

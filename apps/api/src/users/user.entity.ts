@@ -13,6 +13,7 @@ import {
 } from 'typeorm';
 
 import { EmailVerificationToken } from '../auth/email-verification-token.entity';
+import { PasswordResetToken } from '../auth/password-reset-token.entity';
 import { RefreshToken } from '../auth/refresh-token.entity';
 import { TermAcceptance } from '../terms/term-acceptance.entity';
 import { apiUserRoles, apiUserStatuses } from './user.constants';
@@ -26,8 +27,14 @@ export class User {
   @Column({ type: 'citext' })
   email!: string;
 
+  @Column({ name: 'display_name', type: 'varchar', length: 120 })
+  displayName!: string;
+
   @Column({ name: 'password_hash', type: 'text' })
   passwordHash!: string;
+
+  @Column({ name: 'auth_version', type: 'integer', default: 0 })
+  authVersion!: number;
 
   @Column({ enum: [...apiUserRoles], type: 'enum', enumName: 'user_role' })
   role!: UserRole;
@@ -64,9 +71,13 @@ export class User {
   @OneToMany(() => EmailVerificationToken, (token) => token.user)
   emailVerificationTokens!: EmailVerificationToken[];
 
+  @OneToMany(() => PasswordResetToken, (token) => token.user)
+  passwordResetTokens!: PasswordResetToken[];
+
   @BeforeInsert()
   @BeforeUpdate()
   normalizeEmail(): void {
     this.email = this.email.trim().toLowerCase();
+    this.displayName = this.displayName.trim().replace(/\s+/g, ' ');
   }
 }

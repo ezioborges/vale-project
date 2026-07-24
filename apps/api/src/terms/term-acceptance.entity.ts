@@ -7,11 +7,12 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { LegalDocumentType } from '@vale/shared';
 
 import { User } from '../users/user.entity';
 
 @Entity('term_acceptances')
-@Index(['userId', 'version'], { unique: true })
+@Index(['userId', 'documentType', 'version'], { unique: true })
 export class TermAcceptance {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -27,6 +28,9 @@ export class TermAcceptance {
 
   @Column({ type: 'text' })
   version!: string;
+
+  @Column({ name: 'document_type', type: 'text' })
+  documentType!: LegalDocumentType;
 
   @CreateDateColumn({ name: 'accepted_at', type: 'timestamptz' })
   acceptedAt!: Date;

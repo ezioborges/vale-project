@@ -4,11 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Env } from '../common/config/env.validation';
+import { EmailModule } from '../email/email.module';
 import { TermsModule } from '../terms/terms.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailVerificationToken } from './email-verification-token.entity';
+import { PasswordResetToken } from './password-reset-token.entity';
 import { RefreshToken } from './refresh-token.entity';
 
 @Module({
@@ -16,7 +18,12 @@ import { RefreshToken } from './refresh-token.entity';
     ConfigModule,
     UsersModule,
     TermsModule,
-    TypeOrmModule.forFeature([RefreshToken, EmailVerificationToken]),
+    EmailModule,
+    TypeOrmModule.forFeature([
+      RefreshToken,
+      EmailVerificationToken,
+      PasswordResetToken,
+    ]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService<Env, true>) => ({

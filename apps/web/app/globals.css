@@ -204,6 +204,8 @@ button {
 
 .auth-form input[type='email'],
 .auth-form input[type='password'],
+.auth-form input[type='text'],
+.onboarding-card input[type='password'],
 .verification-form input[type='text'] {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -211,6 +213,16 @@ button {
   min-height: 44px;
   padding: 10px 12px;
   width: 100%;
+}
+
+.consent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.consent-list .checkbox-row {
+  align-items: flex-start;
+  line-height: 1.45;
 }
 
 .role-options {
@@ -245,6 +257,25 @@ button {
   font-weight: 800;
 }
 
+.text-action {
+  background: transparent;
+  border: 0;
+  color: var(--accent-strong);
+  font-weight: 800;
+  justify-self: start;
+  padding: 0;
+}
+
+.secondary-action {
+  background: #e3ece9;
+  border: 0;
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-weight: 800;
+  min-height: 42px;
+  padding: 10px 14px;
+}
+
 .primary-action:disabled,
 .verification-form button:disabled {
   cursor: not-allowed;
@@ -257,6 +288,63 @@ button {
   line-height: 1.5;
   margin: 0;
   padding-top: 14px;
+}
+
+.onboarding-layout {
+  display: grid;
+  min-height: calc(100vh - 72px);
+  padding: 48px 24px;
+  place-items: center;
+}
+
+.onboarding-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 18px;
+  max-width: 580px;
+  padding: clamp(24px, 5vw, 48px);
+  width: 100%;
+}
+
+.onboarding-card h1,
+.onboarding-card p {
+  margin: 0;
+}
+
+.onboarding-card > p:not(.auth-message) {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.onboarding-card label {
+  color: var(--muted);
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.onboarding-card input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eyebrow {
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .panel-title {

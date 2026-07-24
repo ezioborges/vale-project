@@ -5,6 +5,9 @@ export class UserResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
+  @ApiProperty()
+  displayName!: string;
+
   @ApiProperty({ format: 'email' })
   email!: string;
 
@@ -18,4 +21,9 @@ export class UserResponseDto {
 
   @ApiProperty({ nullable: true })
   emailVerifiedAt!: string | null;
+
+  @ApiProperty({
+    description: 'Destino inicial adequado ao papel e estado da conta.',
+  })
+  initialPath!: string;
 }

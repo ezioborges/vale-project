@@ -17,17 +17,25 @@ compartilhados entre eles.
 | `NODE_ENV` | ativa comportamento de desenvolvimento ou produção | `production` nos deploys públicos |
 | `API_PORT` | porta HTTP da API | definida pela plataforma quando necessário |
 | `API_CORS_ORIGIN` | origem web autorizada | URL exata do frontend daquele ambiente |
+| `TRUST_PROXY_HOPS` | proxies confiáveis usados para obter o IP do cliente | `0` local; definir pela topologia publicada |
+| `WEB_APP_URL` | origem usada nos links enviados por e-mail | URL pública do frontend |
 | `DATABASE_*` | conexão PostgreSQL | credenciais exclusivas por ambiente |
 | `JWT_ACCESS_SECRET` | assinatura do access token | segredo aleatório com pelo menos 32 caracteres |
 | `JWT_ACCESS_TTL_SECONDS` | duração do access token | curta; padrão local de 900 segundos |
 | `REFRESH_TOKEN_TTL_DAYS` | validade máxima do refresh token | revisar conforme política de sessão |
 | `EMAIL_VERIFICATION_TTL_HOURS` | validade da verificação de e-mail | padrão local de 24 horas |
-| `TERMS_CURRENT_VERSION` | versão exigida pelos guards | alterar somente com publicação coordenada |
+| `PASSWORD_RESET_TTL_MINUTES` | validade do reset de senha de uso único | entre 5 e 60 minutos; padrão 15 |
+| `LEGAL_*_VERSION` | versões de termos, privacidade e diretrizes | publicar e atualizar de forma coordenada |
+| `EMAIL_PROVIDER` | adapter de entrega | `log` local; obrigatoriamente `http` em produção |
+| `EMAIL_HTTP_*` | endpoint e credencial do gateway remoto | obrigatórios e secretos em produção |
 | `SEED_ADMIN_*` | bootstrap local de admin | ausente em produção |
 | `NEXT_PUBLIC_API_BASE_URL` | endereço público da API | não pode conter segredo |
 
 Arquivos `.env` não são versionados. Variáveis remotas ficam no cofre da plataforma. Nunca exponha
 segredos em variáveis `NEXT_PUBLIC_*`, logs, tickets ou screenshots.
+
+O bootstrap recusa produção quando segredo JWT, CORS ou credenciais de banco ainda usam os valores
+locais da `.env.example`, e também quando o provider remoto de e-mail não está completo.
 
 ## Ordem de promoção
 

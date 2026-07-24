@@ -28,14 +28,15 @@ describe('shared platform contracts', () => {
   it('validates the auth response contract', () => {
     expect(() =>
       authResponseSchema.parse({
-        accessToken: 'access-token',
         expiresInSeconds: 900,
         user: {
           id: '9b6bd21a-626b-4a43-84a7-6edcc5728426',
+          displayName: 'Pessoa Candidata',
           email: 'candidate@example.com',
           role: 'candidate',
           status: 'pending_email',
           emailVerifiedAt: null,
+          initialPath: '/onboarding/candidato',
         },
       }),
     ).not.toThrow();
