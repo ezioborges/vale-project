@@ -32,6 +32,7 @@ export default function Home() {
           Vale Project
         </Link>
         <nav className="nav-links" aria-label="Áreas iniciais">
+          <Link href="/laboratorio-ui">Laboratório UI</Link>
           <a href="#fundacao">Fundação</a>
           <a href="#contratos">Contratos</a>
           <a href="#proximos-passos">Próximos passos</a>
@@ -40,7 +41,7 @@ export default function Home() {
 
       <section className="workspace" aria-labelledby="workspace-title">
         <div className="workspace-copy">
-          <StatusPill tone="ready">Fase 0 em desenvolvimento</StatusPill>
+          <StatusPill tone="ready">Fase 1 em fechamento</StatusPill>
           <h1 id="workspace-title">Identidade do MVP</h1>
           <p>
             Cadastro público para candidatos e contratantes, login com sessão,
@@ -116,9 +117,10 @@ export default function Home() {
           <h2 id="next-title">Próxima fatia vertical</h2>
         </div>
         <p className="next-step">
-          A próxima etapa recomendada é implementar perfis mínimos com controle
-          de visibilidade, porque cadastro, sessão, termos e papéis já estão na
-          fundação.
+          A próxima etapa recomendada é fechar recuperação de senha, entrega de
+          e-mail, testes de integração/E2E e rate limiting. Depois disso, o
+          desenvolvimento avança para perfis mínimos com controle de
+          visibilidade.
         </p>
       </section>
     </main>

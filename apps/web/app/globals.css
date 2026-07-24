@@ -1,3 +1,30 @@
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source '../app';
+@source '../components';
+
+@theme {
+  --font-sans:
+    Arial, Helvetica, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --color-vale-canvas: #f8f7fc;
+  --color-vale-surface: #ffffff;
+  --color-vale-ink: #211a35;
+  --color-vale-muted: #6f6a7d;
+  --color-vale-line: #e7e3ef;
+  --color-vale-soft: #f1efff;
+  --color-vale-violet: #5b3df5;
+  --color-vale-violet-deep: #4026c8;
+  --color-vale-pink: #d6249f;
+  --color-vale-blue: #2368e8;
+  --color-vale-green: #12815e;
+  --color-vale-orange: #e95f16;
+  --color-vale-yellow: #f7c948;
+}
+
 :root {
   color-scheme: light;
   --background: #f7f8f5;

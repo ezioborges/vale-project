@@ -19,6 +19,22 @@ Por isso, o MVP não deve ser tratado apenas como um portal de vagas. O núcleo 
 | Contratos claros      | API documentada, DTOs validados e tipos compartilhados quando fizer sentido.         |
 | Qualidade incremental | Testes obrigatórios nos fluxos críticos, sem tentar cobrir tudo no primeiro ciclo.   |
 
+## Estado da execução
+
+Última verificação: 2026-07-24.
+
+| Fase | Estado verificado | Próximo marco |
+| --- | --- | --- |
+| 0 — Fundação técnica | Concluída | reforçar gates de CI sem reabrir a fase |
+| 1 — Identidade, termos e RBAC | Em fechamento | recuperação de senha, e-mail, integração/E2E e rate limiting |
+| 2 — Perfis e privacidade | Não iniciada | iniciar após o fechamento da Fase 1 |
+| 3 — Vagas, busca e candidaturas | Não iniciada | depende de perfis e visibilidade |
+| 4 — Denúncias, administração e auditoria | Não iniciada | depende dos fluxos de negócio anteriores |
+
+As evidências e pendências detalhadas ficam em [`requirements/`](requirements/README.md). Os
+procedimentos reproduzíveis de setup, ambientes e segurança ficam em
+[`runbooks/`](runbooks/README.md).
+
 ## Decisoes imediatas
 
 Estas decisoes devem ser fechadas antes ou durante a Fase 0.

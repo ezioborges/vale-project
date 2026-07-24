@@ -39,9 +39,10 @@ Primeiro uso:
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env
 pnpm db:up
+pnpm --filter @vale/api migration:run
 pnpm dev
 ```
 
@@ -76,6 +77,8 @@ pnpm build
 | [docs/08-backlog-e-roadmap.md](docs/08-backlog-e-roadmap.md)                 | Epicos, historias candidatas e roadmap do MVP.                   |
 | [docs/09-plano-de-acao.md](docs/09-plano-de-acao.md)                         | Sequencia pratica de desenvolvimento do MVP.                     |
 | [docs/10-plano-de-estudos.md](docs/10-plano-de-estudos.md)                   | Plano de estudos para entender as decisoes tecnicas.             |
+| [docs/requirements/README.md](docs/requirements/README.md)                   | Estado verificado, evidencias e pendencias por fase.             |
+| [docs/runbooks/README.md](docs/runbooks/README.md)                           | Procedimentos de setup, ambientes e seguranca.                   |
 | [docs/adr/0001-stack-inicial.md](docs/adr/0001-stack-inicial.md)             | Decisao arquitetural inicial sobre a stack.                      |
 
 ## Estrutura do projeto
@@ -89,15 +92,19 @@ vale-project/
     shared/     # Tipos, contratos e utilitarios compartilhados
   docs/
     adr/
+    requirements/
+    runbooks/
 ```
 
-| Pasta           | Uso                                                          |
-| --------------- | ------------------------------------------------------------ |
-| apps/api        | Aplicacao backend futura.                                    |
-| apps/web        | Aplicacao frontend futura.                                   |
-| packages/shared | Contratos e utilitarios compartilhados.                      |
-| docs            | Documentacao de produto, arquitetura, seguranca e qualidade. |
+| Pasta           | Uso                                                           |
+| --------------- | ------------------------------------------------------------- |
+| apps/api        | API NestJS, autenticacao, usuarios, termos e acesso ao banco. |
+| apps/web        | Aplicacao Next.js e fluxos web iniciais.                      |
+| packages/shared | Contratos e utilitarios compartilhados.                       |
+| docs            | Documentacao de produto, arquitetura, seguranca e qualidade.  |
 
 ## Status
 
-Fase atual: Fase 0 em desenvolvimento, com monorepo, API base, web base, PostgreSQL local, CI e contratos compartilhados.
+Fase atual: Fase 1 em fechamento. A Fase 0 esta concluida; cadastro, sessao, verificacao de e-mail,
+termos e RBAC ja possuem implementacao inicial. Recuperacao de senha, provider de e-mail, testes de
+integracao/E2E e rate limiting ainda precisam ser concluidos antes da Fase 2.
