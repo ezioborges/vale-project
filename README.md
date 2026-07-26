@@ -84,6 +84,7 @@ lockfile e exceções temporárias.
 | [docs/12-plano-aplicacao-design.md](docs/12-plano-aplicacao-design.md)                   | Sequencia de adocao do design system na interface.               |
 | [docs/13-plano-melhorias-seguranca-fluxo.md](docs/13-plano-melhorias-seguranca-fluxo.md) | Analise priorizada de seguranca, fluxo e operacao.               |
 | [docs/14-plano-acao-etapa-0.md](docs/14-plano-acao-etapa-0.md)                           | Execucao detalhada de baseline, CI e dependencias.               |
+| [docs/15-execucao-etapa-1.md](docs/15-execucao-etapa-1.md)                               | Fronteira HTTP, sessao, CSRF, headers e topologia segura.        |
 | [docs/requirements/README.md](docs/requirements/README.md)                               | Estado verificado, evidencias e pendencias por fase.             |
 | [docs/runbooks/README.md](docs/runbooks/README.md)                                       | Procedimentos de setup, ambientes e seguranca.                   |
 | [docs/adr/0001-stack-inicial.md](docs/adr/0001-stack-inicial.md)                         | Decisao arquitetural inicial sobre a stack.                      |

@@ -372,7 +372,7 @@ export class AuthService {
     manager?: EntityManager,
     familyId: string = randomUUID(),
   ): Promise<AuthTokens> {
-    const access = await this.issueAccessToken(user);
+    const access = await this.issueAccessToken(user, familyId);
     const refreshToken = this.generateOpaqueToken();
     const expiresAt = new Date(
       Date.now() +
@@ -404,19 +404,23 @@ export class AuthService {
 
   private async issueAccessToken(
     user: User,
+    sessionId: string,
   ): Promise<{ accessToken: string; expiresInSeconds: number }> {
     const expiresInSeconds = this.configService.get('JWT_ACCESS_TTL_SECONDS', {
       infer: true,
     });
     const payload: JwtPayload = {
       sub: user.id,
-      email: user.email,
       role: user.role,
       status: user.status,
       authVersion: user.authVersion,
+      sid: sessionId,
     };
     const accessToken = await this.jwtService.signAsync(payload, {
+      algorithm: 'HS256',
+      audience: this.configService.get('JWT_AUDIENCE', { infer: true }),
       expiresIn: expiresInSeconds,
+      issuer: this.configService.get('JWT_ISSUER', { infer: true }),
     });
 
     return { accessToken, expiresInSeconds };

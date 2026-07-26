@@ -43,7 +43,6 @@ export const reportDecisionActionSchema = z.enum(reportDecisionActions);
 export const healthResponseSchema = z.object({
   app: z.literal('vale-api'),
   status: z.enum(['ok', 'error']),
-  database: z.enum(['ok', 'error']),
   timestamp: z.string().datetime(),
 });
 

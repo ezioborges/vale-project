@@ -21,11 +21,11 @@ describe('HealthService', () => {
 
     const service = moduleRef.get(HealthService);
 
-    await expect(service.check()).resolves.toMatchObject({
+    await expect(service.ready()).resolves.toMatchObject({
       app: 'vale-api',
       status: 'ok',
-      database: 'ok',
     });
+    expect(service.live()).toMatchObject({ app: 'vale-api', status: 'ok' });
   });
 
   it('fails closed when the database does not respond', async () => {
@@ -43,8 +43,9 @@ describe('HealthService', () => {
 
     const service = moduleRef.get(HealthService);
 
-    await expect(service.check()).rejects.toBeInstanceOf(
+    await expect(service.ready()).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+    expect(service.live()).toMatchObject({ status: 'ok' });
   });
 });

@@ -56,6 +56,27 @@ describe('production environment validation', () => {
       true,
     );
   });
+
+  it('requires the documented same-origin proxy topology in production', () => {
+    const differentOrigin = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      API_CORS_ORIGIN: 'https://api.vale.example',
+    });
+    const exposedSwagger = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      SWAGGER_ENABLED: 'true',
+    });
+
+    expect(differentOrigin.success).toBe(false);
+    expect(exposedSwagger.success).toBe(false);
+  });
+
+  it('enables Swagger only by default in development', () => {
+    expect(envSchema.parse({ NODE_ENV: 'development' }).SWAGGER_ENABLED).toBe(
+      true,
+    );
+    expect(envSchema.parse({ NODE_ENV: 'test' }).SWAGGER_ENABLED).toBe(false);
+  });
 });
 
 function validProductionEnvironment() {
@@ -68,6 +89,7 @@ function validProductionEnvironment() {
     DATABASE_PASSWORD: 'production-secret',
     DATABASE_NAME: 'vale_production',
     JWT_ACCESS_SECRET: 'production-secret-with-more-than-32-characters',
+    REFRESH_COOKIE_PATH: '/api/auth',
     EMAIL_PROVIDER: 'http',
     EMAIL_FROM: 'contato@vale.example',
     EMAIL_HTTP_ENDPOINT: 'https://email.vale.example/send',

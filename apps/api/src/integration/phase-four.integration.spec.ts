@@ -1,11 +1,12 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { DataSource, Repository } from 'typeorm';
 
 import { AppModule } from '../app.module';
+import { Env } from '../common/config/env.validation';
+import { configureHttpApp } from '../common/http/http.config';
 import { AuditEvent } from '../audit/audit-event.entity';
 import { CreateIdentityTables1710000001000 } from '../database/migrations/1710000001000-CreateIdentityTables';
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
@@ -17,6 +18,7 @@ import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { Job } from '../jobs/job.entity';
 import { Report } from '../reports/report.entity';
 import { User } from '../users/user.entity';
+import { enableCsrfForAgent } from './csrf-test.helper';
 
 const integrationDescribe =
   process.env.RUN_INTEGRATION_TESTS === 'true' ? describe : describe.skip;
@@ -72,14 +74,7 @@ integrationDescribe('Phase 4 reports, administration and audit', () => {
       .compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>();
-    app.use(cookieParser());
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureHttpApp(app, moduleRef.get(ConfigService<Env, true>));
     await app.init();
 
     const dataSource = app.get(DataSource);
@@ -411,6 +406,7 @@ integrationDescribe('Phase 4 reports, administration and audit', () => {
       acceptGuidelines: true,
     });
     expect(registration.status).toBe(201);
+    enableCsrfForAgent(agent, registration);
     const verification = await agent
       .post('/auth/verify-email')
       .send({ token: emailSender.tokenFor(email) });

@@ -30,8 +30,9 @@ A implementação e a sequência de adoção estão descritas no
 | 13 | [12-plano-aplicacao-design.md](12-plano-aplicacao-design.md) |
 | 14 | [13-plano-melhorias-seguranca-fluxo.md](13-plano-melhorias-seguranca-fluxo.md) |
 | 15 | [14-plano-acao-etapa-0.md](14-plano-acao-etapa-0.md) |
-| 16 | [requirements/README.md](requirements/README.md) |
-| 17 | [runbooks/README.md](runbooks/README.md) |
+| 16 | [15-execucao-etapa-1.md](15-execucao-etapa-1.md) |
+| 17 | [requirements/README.md](requirements/README.md) |
+| 18 | [runbooks/README.md](runbooks/README.md) |
 
 ## Registros operacionais
 

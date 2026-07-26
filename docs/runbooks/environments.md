@@ -3,6 +3,22 @@
 O Vale Project deve operar com ambientes isolados. Banco, credenciais, cookies e dados não são
 compartilhados entre eles.
 
+## Topologia HTTP oficial
+
+Em produção, navegador, Web e API usam uma única origem pública HTTPS. O proxy encaminha
+`/api/*` para o NestJS removendo o prefixo `/api`; as demais rotas seguem para o Next.js. Por
+exemplo, o navegador acessa `https://vale.example/api/auth/login`, enquanto o controller recebe
+`/auth/login`.
+
+Essa topologia é obrigatória porque mantém os cookies host-only disponíveis ao middleware Web e à
+API sem configurar `Domain`, reduz CORS a uma origem exata e permite os prefixos `__Host-` e
+`__Secure-`. O proxy deve preservar `Origin`, `Referer`, `Cookie`, `Set-Cookie` e
+`X-CSRF-Token` nas rotas `/api/*` e limitar o corpo das requisições.
+
+Em desenvolvimento local, Web e API continuam em portas diferentes de `localhost`. Nesse caso,
+`API_CORS_ORIGIN=http://localhost:3000`, `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001` e o
+path do refresh é `/auth`.
+
 | Ambiente | Aplicação e banco | Dados permitidos | Promoção |
 | --- | --- | --- | --- |
 | Local | processos locais e PostgreSQL no Compose | somente fictícios | livre e descartável |
@@ -21,8 +37,11 @@ compartilhados entre eles.
 | `WEB_APP_URL` | origem usada nos links enviados por e-mail | URL pública do frontend |
 | `DATABASE_*` | conexão PostgreSQL | credenciais exclusivas por ambiente |
 | `JWT_ACCESS_SECRET` | assinatura do access token | segredo aleatório com pelo menos 32 caracteres |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | destinatário e emissor esperados no access token | valores explícitos e estáveis por ambiente |
 | `JWT_ACCESS_TTL_SECONDS` | duração do access token | curta; padrão local de 900 segundos |
 | `REFRESH_TOKEN_TTL_DAYS` | validade máxima do refresh token | revisar conforme política de sessão |
+| `REFRESH_COOKIE_PATH` | escopo do refresh cookie | `/auth` local; obrigatoriamente `/api/auth` em produção |
+| `SWAGGER_ENABLED` | exposição local da documentação | permitido fora de produção; recusado em produção |
 | `EMAIL_VERIFICATION_TTL_HOURS` | validade da verificação de e-mail | padrão local de 24 horas |
 | `PASSWORD_RESET_TTL_MINUTES` | validade do reset de senha de uso único | entre 5 e 60 minutos; padrão 15 |
 | `LEGAL_*_VERSION` | versões de termos, privacidade e diretrizes | publicar e atualizar de forma coordenada |
@@ -32,14 +51,15 @@ compartilhados entre eles.
 | `PROFILE_STORAGE_ROOT` | diretório privado do adapter local | fora da árvore pública e com dados fictícios |
 | `S3_*` | endpoint, bucket, região e credenciais S3/R2 | obrigatórios e secretos quando o driver for `s3` |
 | `SEED_ADMIN_*` | bootstrap local de admin | ausente em produção |
-| `NEXT_PUBLIC_API_BASE_URL` | endereço público da API | não pode conter segredo |
+| `NEXT_PUBLIC_API_BASE_URL` | endereço usado pelo navegador | `/api` em produção; não pode conter segredo |
 
 Arquivos `.env` não são versionados. Variáveis remotas ficam no cofre da plataforma. Nunca exponha
 segredos em variáveis `NEXT_PUBLIC_*`, logs, tickets ou screenshots.
 
-O bootstrap recusa produção quando segredo JWT, CORS ou credenciais de banco ainda usam os valores
-locais da `.env.example`, quando o provider remoto de e-mail não está completo, quando o storage
-local está selecionado ou quando faltam parâmetros S3/R2.
+O bootstrap recusa produção quando Web e CORS não usam a mesma origem HTTPS, o path do refresh não
+é `/api/auth`, Swagger está habilitado, segredo JWT, CORS ou credenciais de banco ainda usam os
+valores locais da `.env.example`, o provider remoto de e-mail não está completo, o storage local
+está selecionado ou faltam parâmetros S3/R2.
 
 ## Ordem de promoção
 
@@ -49,7 +69,8 @@ local está selecionado ou quando faltam parâmetros S3/R2.
 4. aplicar migrations forward-only no banco do ambiente;
 5. promover a API compatível com o schema;
 6. promover o frontend;
-7. verificar `/health`, `/docs` quando permitido e os fluxos críticos de autenticação;
+7. verificar `/api/health/live`, `/api/health/ready` e os fluxos críticos de autenticação; Swagger
+   não é exposto em produção;
 8. registrar versão, horário, executor, SHA do lockfile, migrations aplicadas, artefatos da CI e
    resultado da verificação.
 
@@ -59,9 +80,10 @@ uma entrega posterior.
 
 ## Verificação pós-promoção
 
-- health check confirma aplicação e banco;
+- liveness confirma o processo sem depender do banco e readiness confirma a conexão necessária;
 - cadastro público não aceita papéis internos;
-- cookies são HttpOnly, `Secure` e possuem o domínio esperado;
+- access e refresh são HttpOnly, `Secure`, host-only e usam o prefixo e path esperados;
+- mutações por cookie rejeitam CSRF ausente e origem divergente;
 - refresh rotaciona e o token anterior deixa de funcionar;
 - contas suspensas ou desabilitadas não autenticam;
 - endpoint administrativo rejeita atores sem papel admin;
@@ -69,6 +91,10 @@ uma entrega posterior.
 - upload de teste autorizado é privado, e um papel sem acesso recebe `403`;
 - bucket de arquivos bloqueia acesso público e aplica criptografia e retenção definidas pelo ambiente;
 - `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` não existem em produção.
+
+HSTS deve ser aplicado no proxy público somente após confirmar HTTPS em todos os subdomínios
+incluídos pela política. CSP começa em `Content-Security-Policy-Report-Only`; as violações legítimas
+devem ser eliminadas antes da migração para bloqueio.
 
 ## Estado atual
 

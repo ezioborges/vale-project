@@ -4,23 +4,24 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  UnauthorizedException,
   Post,
   Req,
   Res,
+  UnauthorizedException,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 
-import {
-  ACCESS_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-} from '../common/auth/auth.constants';
+import { getAuthCookieNames } from '../common/auth/auth.constants';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
+import { CsrfProtected } from '../common/auth/csrf.decorator';
+import { CsrfService } from '../common/auth/csrf.service';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import { Public } from '../common/auth/public.decorator';
 import { Env } from '../common/config/env.validation';
+import { NoStoreInterceptor } from '../common/http/no-store.interceptor';
 import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -36,11 +37,13 @@ type CookieRequest = Request & {
 };
 
 @ApiTags('auth')
+@UseInterceptors(NoStoreInterceptor)
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<Env, true>,
+    private readonly csrfService: CsrfService,
   ) {}
 
   @Public()
@@ -60,6 +63,16 @@ export class AuthController {
   }
 
   @Public()
+  @Get('csrf')
+  csrf(
+    @Req() request: CookieRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): { csrfToken: string } {
+    const csrfToken = this.setCsrfCookie(response, request);
+    return { csrfToken };
+  }
+
+  @Public()
   @Post('register')
   @RateLimit({ name: 'auth:register', limit: 5, windowSeconds: 600 })
   @ApiOkResponse({ type: AuthResponseDto })
@@ -72,7 +85,12 @@ export class AuthController {
       body,
       this.getMetadata(request),
     );
-    this.setAuthCookies(response, result.accessToken, result.refreshToken);
+    this.setAuthCookies(
+      response,
+      result.accessToken,
+      result.refreshToken,
+      request,
+    );
     return this.withoutTokens(result);
   }
 
@@ -90,22 +108,27 @@ export class AuthController {
       body,
       this.getMetadata(request),
     );
-    this.setAuthCookies(response, result.accessToken, result.refreshToken);
+    this.setAuthCookies(
+      response,
+      result.accessToken,
+      result.refreshToken,
+      request,
+    );
     return this.withoutTokens(result);
   }
 
   @Public()
   @Post('refresh')
+  @CsrfProtected()
   @HttpCode(200)
   @RateLimit({ name: 'auth:refresh', limit: 30, windowSeconds: 60 })
   @ApiOkResponse({ type: AuthResponseDto })
   async refresh(
-    @Body() body: RefreshTokenDto,
+    @Body() _body: RefreshTokenDto,
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponseDto> {
-    const refreshToken =
-      body?.refreshToken ?? request.cookies?.[REFRESH_TOKEN_COOKIE];
+    const refreshToken = this.refreshTokenFrom(request);
 
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is required.');
@@ -115,22 +138,25 @@ export class AuthController {
       refreshToken,
       this.getMetadata(request),
     );
-    this.setAuthCookies(response, result.accessToken, result.refreshToken);
+    this.setAuthCookies(
+      response,
+      result.accessToken,
+      result.refreshToken,
+      request,
+    );
     return this.withoutTokens(result);
   }
 
   @Public()
   @Post('logout')
+  @CsrfProtected()
   @HttpCode(204)
   async logout(
-    @Body() body: RefreshTokenDto,
+    @Body() _body: RefreshTokenDto,
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    await this.authService.logout(
-      body?.refreshToken ?? request.cookies?.[REFRESH_TOKEN_COOKIE],
-      request.ip,
-    );
+    await this.authService.logout(this.refreshTokenFrom(request), request.ip);
     this.clearAuthCookies(response);
   }
 
@@ -184,6 +210,7 @@ export class AuthController {
     response: Response,
     accessToken: string,
     refreshToken: string,
+    request: CookieRequest,
   ): void {
     const refreshMaxAge =
       this.configService.get('REFRESH_TOKEN_TTL_DAYS', { infer: true }) *
@@ -193,32 +220,79 @@ export class AuthController {
       1000;
 
     this.setAccessCookie(response, accessToken);
-    response.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
+    const names = this.cookieNames();
+    response.cookie(names.refresh, refreshToken, {
       httpOnly: true,
       maxAge: refreshMaxAge,
-      path: '/',
+      path: this.configService.get('REFRESH_COOKIE_PATH', { infer: true }),
       sameSite: 'lax',
-      secure:
-        this.configService.get('NODE_ENV', { infer: true }) === 'production',
+      secure: this.isProduction(),
     });
+    this.setCsrfCookie(response, request);
   }
 
   private setAccessCookie(response: Response, accessToken: string): void {
-    response.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
+    response.cookie(this.cookieNames().access, accessToken, {
       httpOnly: true,
       maxAge:
         this.configService.get('JWT_ACCESS_TTL_SECONDS', { infer: true }) *
         1000,
       path: '/',
       sameSite: 'lax',
-      secure:
-        this.configService.get('NODE_ENV', { infer: true }) === 'production',
+      secure: this.isProduction(),
     });
   }
 
   private clearAuthCookies(response: Response): void {
-    response.clearCookie(ACCESS_TOKEN_COOKIE, { path: '/' });
-    response.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
+    const names = this.cookieNames();
+    const common: CookieOptions = {
+      sameSite: 'lax',
+      secure: this.isProduction(),
+    };
+    response.clearCookie(names.access, { ...common, path: '/' });
+    response.clearCookie(names.refresh, {
+      ...common,
+      httpOnly: true,
+      path: this.configService.get('REFRESH_COOKIE_PATH', { infer: true }),
+    });
+    response.clearCookie(names.csrf, { ...common, path: '/' });
+  }
+
+  private setCsrfCookie(response: Response, request?: CookieRequest): string {
+    const existingToken = request?.cookies?.[this.cookieNames().csrf];
+    const csrfToken =
+      existingToken && this.csrfService.isValid(existingToken)
+        ? existingToken
+        : this.csrfService.issueToken();
+    const maxAge =
+      this.configService.get('REFRESH_TOKEN_TTL_DAYS', { infer: true }) *
+      24 *
+      60 *
+      60 *
+      1000;
+    response.cookie(this.cookieNames().csrf, csrfToken, {
+      httpOnly: false,
+      maxAge,
+      path: '/',
+      sameSite: 'lax',
+      secure: this.isProduction(),
+    });
+    response.setHeader('X-CSRF-Token', csrfToken);
+    return csrfToken;
+  }
+
+  private refreshTokenFrom(request: CookieRequest): string | undefined {
+    return request.cookies?.[this.cookieNames().refresh];
+  }
+
+  private cookieNames() {
+    return getAuthCookieNames(
+      this.configService.get('NODE_ENV', { infer: true }),
+    );
+  }
+
+  private isProduction(): boolean {
+    return this.configService.get('NODE_ENV', { infer: true }) === 'production';
   }
 
   private getMetadata(request: Request) {

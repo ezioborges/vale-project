@@ -142,6 +142,8 @@ Marco: o commit promovido foi produzido e validado pelo mesmo pipeline registrad
 
 Objetivo: reduzir a superfície de ataque antes de evoluir funcionalidades.
 
+Execução versionada: [`15-execucao-etapa-1.md`](15-execucao-etapa-1.md).
+
 ### Cookies, CSRF e JWT
 
 1. definir uma topologia oficial: Web e API no mesmo site ou uma camada BFF/reverse proxy

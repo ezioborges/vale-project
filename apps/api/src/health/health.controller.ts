@@ -13,7 +13,19 @@ export class HealthController {
 
   @Get()
   @ApiOkResponse({ type: HealthResponseDto })
-  check(): Promise<HealthResponseDto> {
-    return this.healthService.check();
+  readyAlias(): Promise<HealthResponseDto> {
+    return this.healthService.ready();
+  }
+
+  @Get('live')
+  @ApiOkResponse({ type: HealthResponseDto })
+  live(): HealthResponseDto {
+    return this.healthService.live();
+  }
+
+  @Get('ready')
+  @ApiOkResponse({ type: HealthResponseDto })
+  ready(): Promise<HealthResponseDto> {
+    return this.healthService.ready();
   }
 }

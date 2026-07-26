@@ -8,28 +8,24 @@ import { HealthResponseDto } from './health.dto';
 export class HealthService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  async check(): Promise<HealthResponseDto> {
-    const database = await this.checkDatabase();
-
-    return {
-      app: 'vale-api',
-      status: database,
-      database,
-      timestamp: new Date().toISOString(),
-    };
+  live(): HealthResponseDto {
+    return this.response('ok');
   }
 
-  private async checkDatabase(): Promise<'ok'> {
+  async ready(): Promise<HealthResponseDto> {
     try {
       await this.dataSource.query('SELECT 1');
-      return 'ok';
+      return this.response('ok');
     } catch {
-      throw new ServiceUnavailableException({
-        app: 'vale-api',
-        status: 'error',
-        database: 'error',
-        timestamp: new Date().toISOString(),
-      });
+      throw new ServiceUnavailableException(this.response('error'));
     }
+  }
+
+  private response(status: 'ok' | 'error'): HealthResponseDto {
+    return {
+      app: 'vale-api',
+      status,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

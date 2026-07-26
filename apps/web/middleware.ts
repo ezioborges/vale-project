@@ -28,7 +28,10 @@ export function initialPathForClaims(claims: SessionClaims): string {
 }
 
 export function middleware(request: NextRequest) {
-  const accessToken = request.cookies.get('vale_access_token')?.value;
+  const accessCookieName = request.cookies.has('__Host-vale_access_token')
+    ? '__Host-vale_access_token'
+    : 'vale_access_token';
+  const accessToken = request.cookies.get(accessCookieName)?.value;
   const hasPublicVerificationToken =
     request.nextUrl.pathname.startsWith('/onboarding/') &&
     request.nextUrl.searchParams.has('token');
@@ -49,7 +52,7 @@ export function middleware(request: NextRequest) {
     }
 
     const response = NextResponse.redirect(new URL('/', request.url));
-    response.cookies.delete('vale_access_token');
+    response.cookies.delete(accessCookieName);
     return response;
   }
 

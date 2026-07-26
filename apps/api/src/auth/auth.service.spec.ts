@@ -37,7 +37,9 @@ describe('AuthService', () => {
     get: jest.fn((key: string) => {
       const values: Record<string, string | number> = {
         EMAIL_VERIFICATION_TTL_HOURS: 24,
+        JWT_AUDIENCE: 'vale-web',
         JWT_ACCESS_TTL_SECONDS: 900,
+        JWT_ISSUER: 'vale-api',
         LEGAL_GUIDELINES_VERSION: 'guidelines-current',
         LEGAL_PRIVACY_VERSION: 'privacy-current',
         LEGAL_TERMS_VERSION: 'terms-current',
@@ -137,6 +139,21 @@ describe('AuthService', () => {
     );
     expect(response).not.toHaveProperty('devEmailVerificationToken');
     expect(refreshRepository.save).toHaveBeenCalledTimes(1);
+    expect(jwtService.signAsync).toHaveBeenCalledWith(
+      expect.not.objectContaining({ email: expect.anything() }),
+      expect.objectContaining({
+        algorithm: 'HS256',
+        audience: 'vale-web',
+        issuer: 'vale-api',
+      }),
+    );
+    expect(jwtService.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sid: expect.any(String),
+        sub: testUser.id,
+      }),
+      expect.any(Object),
+    );
   });
 
   it('rejects invalid login and accepts a valid password', async () => {

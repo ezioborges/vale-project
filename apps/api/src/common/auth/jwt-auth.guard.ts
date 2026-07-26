@@ -6,11 +6,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
 import { UsersService } from '../../users/users.service';
-import { ACCESS_TOKEN_COOKIE, IS_PUBLIC_KEY } from './auth.constants';
+import { Env } from '../config/env.validation';
+import { getAuthCookieNames, IS_PUBLIC_KEY } from './auth.constants';
 import { AuthenticatedUser, JwtPayload } from './authenticated-user';
 
 type RequestWithCookies = Request & {
@@ -24,6 +26,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly configService: ConfigService<Env, true>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,7 +48,11 @@ export class JwtAuthGuard implements CanActivate {
 
     let payload: JwtPayload;
     try {
-      payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+        algorithms: ['HS256'],
+        audience: this.configService.get('JWT_AUDIENCE', { infer: true }),
+        issuer: this.configService.get('JWT_ISSUER', { infer: true }),
+      });
     } catch {
       throw new UnauthorizedException('Access token is invalid or expired.');
     }
@@ -76,6 +83,9 @@ export class JwtAuthGuard implements CanActivate {
       return token;
     }
 
-    return request.cookies?.[ACCESS_TOKEN_COOKIE];
+    const names = getAuthCookieNames(
+      this.configService.get('NODE_ENV', { infer: true }),
+    );
+    return request.cookies?.[names.access];
   }
 }

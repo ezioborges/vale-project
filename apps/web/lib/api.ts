@@ -76,6 +76,8 @@ import {
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const unsafeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const csrfTokens = new WeakMap<Fetcher, string>();
 
 export async function getApiHealth(
   fetcher: typeof fetch = fetch,
@@ -141,13 +143,18 @@ async function apiJson<TInput extends object, TOutput>(
   body: TInput,
   parse: (value: unknown) => TOutput,
   fetcher: Fetcher = fetch,
+  csrfProtected = false,
 ): Promise<TOutput> {
+  const csrfHeaders: Record<string, string> = csrfProtected
+    ? { 'X-CSRF-Token': await csrfTokenFor(fetcher) }
+    : {};
   const response = await fetcher(`${apiBaseUrl}${path}`, {
     body: JSON.stringify(body),
     credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      ...csrfHeaders,
     },
     method: 'POST',
   });
@@ -156,6 +163,7 @@ async function apiJson<TInput extends object, TOutput>(
     throw new Error(`API request failed with status ${response.status}`);
   }
 
+  rememberCsrfToken(fetcher, response);
   return parse(await response.json());
 }
 
@@ -174,7 +182,7 @@ export function loginUser(
 }
 
 export function refreshSession(fetcher?: Fetcher): Promise<AuthResponse> {
-  return apiJson('/auth/refresh', {}, authResponseSchema.parse, fetcher);
+  return apiJson('/auth/refresh', {}, authResponseSchema.parse, fetcher, true);
 }
 
 export function verifyEmail(
@@ -216,12 +224,14 @@ export function resetPassword(
 export async function requestEmailVerification(
   fetcher: Fetcher = fetch,
 ): Promise<MessageResponse> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/auth/email-verification`, {
     body: JSON.stringify({}),
     credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
     },
     method: 'POST',
   });
@@ -236,10 +246,12 @@ export async function requestEmailVerification(
 }
 
 export async function logoutUser(fetcher: Fetcher = fetch): Promise<void> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/auth/logout`, {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
+      'X-CSRF-Token': csrfToken,
     },
     method: 'POST',
   });
@@ -247,6 +259,7 @@ export async function logoutUser(fetcher: Fetcher = fetch): Promise<void> {
   if (!response.ok && response.status !== 204) {
     throw new Error(`API logout failed with status ${response.status}`);
   }
+  csrfTokens.delete(fetcher);
 }
 
 export async function getCurrentUser(
@@ -276,12 +289,14 @@ export async function saveCandidateProfile(
   input: CandidateProfileInput,
   fetcher: Fetcher = fetch,
 ): Promise<CandidateProfile> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/profiles/candidate/me`, {
     body: JSON.stringify(candidateProfileInputSchema.parse(input)),
     credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
     },
     method: 'PATCH',
   });
@@ -293,12 +308,14 @@ export async function saveEmployerProfile(
   input: EmployerProfileInput,
   fetcher: Fetcher = fetch,
 ): Promise<EmployerProfile> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/profiles/employer/me`, {
     body: JSON.stringify(employerProfileInputSchema.parse(input)),
     credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
     },
     method: 'PATCH',
   });
@@ -310,6 +327,7 @@ export async function updateCandidateVisibility(
   visibility: ProfileVisibility,
   fetcher: Fetcher = fetch,
 ): Promise<CandidateProfile> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(
     `${apiBaseUrl}/profiles/candidate/me/visibility`,
     {
@@ -318,6 +336,7 @@ export async function updateCandidateVisibility(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
       },
       method: 'PATCH',
     },
@@ -330,6 +349,7 @@ export async function updateCandidateActivation(
   isActive: boolean,
   fetcher: Fetcher = fetch,
 ): Promise<CandidateProfile> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(
     `${apiBaseUrl}/profiles/candidate/me/activation`,
     {
@@ -338,6 +358,7 @@ export async function updateCandidateActivation(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
       },
       method: 'PATCH',
     },
@@ -354,10 +375,14 @@ export async function uploadProfileFile(
   const body = new FormData();
   body.set('kind', kind);
   body.set('file', file);
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/profiles/files`, {
     body,
     credentials: 'include',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'X-CSRF-Token': csrfToken,
+    },
     method: 'POST',
   });
   if (!response.ok) throw await errorFor(response);
@@ -368,8 +393,10 @@ export async function deleteProfileFile(
   assetId: string,
   fetcher: Fetcher = fetch,
 ): Promise<void> {
+  const csrfToken = await csrfTokenFor(fetcher);
   const response = await fetcher(`${apiBaseUrl}/profiles/files/${assetId}`, {
     credentials: 'include',
+    headers: { 'X-CSRF-Token': csrfToken },
     method: 'DELETE',
   });
   if (!response.ok) throw await errorFor(response);
@@ -419,17 +446,75 @@ async function apiRequest<T>(
   init: RequestInit = {},
   fetcher: Fetcher = fetch,
 ): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  if (init.body) {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (unsafeMethods.has(method)) {
+    headers.set('X-CSRF-Token', await csrfTokenFor(fetcher));
+  }
   const response = await fetcher(`${apiBaseUrl}${path}`, {
     credentials: 'include',
     ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init.headers,
-    },
+    headers,
   });
   if (!response.ok) throw await errorFor(response);
   return parse(await response.json());
+}
+
+async function csrfTokenFor(fetcher: Fetcher): Promise<string> {
+  const cookieToken = csrfTokenFromDocument();
+  if (cookieToken) {
+    csrfTokens.set(fetcher, cookieToken);
+    return cookieToken;
+  }
+
+  const cached = csrfTokens.get(fetcher);
+  if (cached && typeof document === 'undefined') {
+    return cached;
+  }
+
+  const response = await fetcher(`${apiBaseUrl}/auth/csrf`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new ApiRequestError(
+      response.status,
+      `CSRF bootstrap failed with status ${response.status}`,
+    );
+  }
+
+  const body = (await response.json()) as { csrfToken?: unknown };
+  if (typeof body.csrfToken !== 'string' || body.csrfToken.length < 32) {
+    throw new Error('CSRF bootstrap returned an invalid token.');
+  }
+  csrfTokens.set(fetcher, body.csrfToken);
+  return body.csrfToken;
+}
+
+function rememberCsrfToken(fetcher: Fetcher, response: Response): void {
+  const token = response.headers?.get?.('X-CSRF-Token');
+  if (token) {
+    csrfTokens.set(fetcher, token);
+  }
+}
+
+function csrfTokenFromDocument(): string | undefined {
+  if (typeof document === 'undefined') {
+    return undefined;
+  }
+
+  const names = ['__Host-vale_csrf_token', 'vale_csrf_token'];
+  for (const part of document.cookie.split(';')) {
+    const [rawName, ...rawValue] = part.trim().split('=');
+    if (rawName && names.includes(rawName)) {
+      return decodeURIComponent(rawValue.join('='));
+    }
+  }
+  return undefined;
 }
 
 export function searchJobs(

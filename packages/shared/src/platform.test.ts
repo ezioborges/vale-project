@@ -36,7 +36,6 @@ describe('shared platform contracts', () => {
       healthResponseSchema.parse({
         app: 'vale-api',
         status: 'ok',
-        database: 'ok',
         timestamp: new Date().toISOString(),
       }),
     ).not.toThrow();

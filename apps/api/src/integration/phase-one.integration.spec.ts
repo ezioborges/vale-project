@@ -1,11 +1,13 @@
-import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import cookieParser from 'cookie-parser';
+import { JwtService } from '@nestjs/jwt';
 import request, { Response } from 'supertest';
 import { DataSource, Repository } from 'typeorm';
 
 import { AppModule } from '../app.module';
+import { Env } from '../common/config/env.validation';
+import { configureHttpApp } from '../common/http/http.config';
 import { AuditEvent } from '../audit/audit-event.entity';
 import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { RateLimitCounter } from '../common/rate-limit/rate-limit-counter.entity';
@@ -16,6 +18,7 @@ import { CreateIdentityTables1710000001000 } from '../database/migrations/171000
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
 import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
 import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
+import { enableCsrfForAgent, TEST_BROWSER_ORIGIN } from './csrf-test.helper';
 
 const integrationDescribe =
   process.env.RUN_INTEGRATION_TESTS === 'true' ? describe : describe.skip;
@@ -67,14 +70,7 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
       .compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>();
-    app.use(cookieParser());
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureHttpApp(app, moduleRef.get(ConfigService<Env, true>));
     await app.init();
 
     dataSource = app.get(DataSource);
@@ -259,10 +255,11 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
         email: 'admin-flow@example.com',
       });
       const adminAgent = request.agent(app.getHttpServer());
-      await adminAgent.post('/auth/login').send({
+      const adminLogin = await adminAgent.post('/auth/login').send({
         email: admin.email,
         password: 'initial-password',
       });
+      enableCsrfForAgent(adminAgent, adminLogin);
 
       const pendingAgent = request.agent(app.getHttpServer());
       const email = `pending-${status}@example.com`;
@@ -299,10 +296,25 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
       password: 'initial-password',
     });
     const refreshToken = cookieValue(login, 'vale_refresh_token');
+    const csrfToken = cookieValue(login, 'vale_csrf_token');
+    const cookies = [
+      `vale_refresh_token=${refreshToken}`,
+      `vale_csrf_token=${csrfToken}`,
+    ];
 
     const [first, second] = await Promise.all([
-      request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken }),
-      request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken }),
+      request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Cookie', cookies)
+        .set('Origin', TEST_BROWSER_ORIGIN)
+        .set('X-CSRF-Token', csrfToken)
+        .send({}),
+      request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Cookie', cookies)
+        .set('Origin', TEST_BROWSER_ORIGIN)
+        .set('X-CSRF-Token', csrfToken)
+        .send({}),
     ]);
     const responses = [first, second].sort((a, b) => a.status - b.status);
 
@@ -310,9 +322,141 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
     const successor = cookieValue(responses[0]!, 'vale_refresh_token');
     const familyRevoked = await request(app.getHttpServer())
       .post('/auth/refresh')
-      .send({ refreshToken: successor });
+      .set('Cookie', [
+        `vale_refresh_token=${successor}`,
+        `vale_csrf_token=${csrfToken}`,
+      ])
+      .set('Origin', TEST_BROWSER_ORIGIN)
+      .set('X-CSRF-Token', csrfToken)
+      .send({});
     expect(familyRevoked.status).toBe(401);
     expect(familyRevoked.body.message).toContain('reuse detected');
+  });
+
+  it('enforces CSRF, exact origin, JWT claims and hardened HTTP responses', async () => {
+    const login = await request(app.getHttpServer()).post('/auth/login').send({
+      email: 'admin-flow@example.com',
+      password: 'initial-password',
+    });
+    expect(login.status).toBe(200);
+    expect(login.headers['cache-control']).toBe('no-store');
+    expect(cookieHeader(login, 'vale_access_token')).toEqual(
+      expect.stringContaining('HttpOnly'),
+    );
+    expect(cookieHeader(login, 'vale_access_token')).toEqual(
+      expect.stringContaining('SameSite=Lax'),
+    );
+    expect(cookieHeader(login, 'vale_refresh_token')).toEqual(
+      expect.stringContaining('Path=/auth'),
+    );
+    expect(cookieHeader(login, 'vale_refresh_token')).toEqual(
+      expect.stringContaining('HttpOnly'),
+    );
+    expect(cookieHeader(login, 'vale_csrf_token')).not.toContain('HttpOnly');
+
+    const accessToken = cookieValue(login, 'vale_access_token');
+    const refreshToken = cookieValue(login, 'vale_refresh_token');
+    const csrfToken = cookieValue(login, 'vale_csrf_token');
+    const sessionCookies = [
+      `vale_access_token=${accessToken}`,
+      `vale_refresh_token=${refreshToken}`,
+      `vale_csrf_token=${csrfToken}`,
+    ];
+
+    const withoutCsrf = await request(app.getHttpServer())
+      .patch('/users/00000000-0000-4000-8000-000000000000/role')
+      .set('Cookie', sessionCookies)
+      .set('Origin', TEST_BROWSER_ORIGIN)
+      .send({
+        role: 'coordinator',
+        reason: 'A requisição não possui a prova CSRF obrigatória.',
+      });
+    expect(withoutCsrf.status).toBe(403);
+    expect(withoutCsrf.body.message).toContain('CSRF');
+
+    const invalidOrigin = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', sessionCookies)
+      .set('Origin', 'https://attacker.example')
+      .set('X-CSRF-Token', csrfToken)
+      .send({});
+    expect(invalidOrigin.status).toBe(403);
+
+    const cookieMissing = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Origin', TEST_BROWSER_ORIGIN)
+      .set('X-CSRF-Token', csrfToken)
+      .send({});
+    expect(cookieMissing.status).toBe(401);
+
+    const tokenFromBody = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken });
+    expect(tokenFromBody.status).toBe(400);
+
+    const [headerSegment, payloadSegment] = accessToken.split('.');
+    const header = JSON.parse(
+      Buffer.from(headerSegment!, 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+    const payload = JSON.parse(
+      Buffer.from(payloadSegment!, 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+    expect(header.alg).toBe('HS256');
+    expect(payload).toMatchObject({
+      aud: 'vale-web',
+      iss: 'vale-api',
+      sid: expect.any(String),
+    });
+    expect(payload).not.toHaveProperty('email');
+
+    const expiredToken = app.get(JwtService).sign(
+      {
+        authVersion: payload.authVersion,
+        role: payload.role,
+        sid: payload.sid,
+        status: payload.status,
+        sub: payload.sub,
+      },
+      { expiresIn: -1 },
+    );
+    const expired = await request(app.getHttpServer())
+      .get('/users/me')
+      .set('Cookie', `vale_access_token=${expiredToken}`);
+    expect(expired.status).toBe(401);
+
+    const live = await request(app.getHttpServer()).get('/health/live');
+    const ready = await request(app.getHttpServer()).get('/health/ready');
+    expect(live.status).toBe(200);
+    expect(live.body).not.toHaveProperty('database');
+    expect(ready.status).toBe(200);
+    expect(ready.body).not.toHaveProperty('database');
+    expect(live.headers['content-security-policy-report-only']).toContain(
+      "frame-ancestors 'none'",
+    );
+    expect(live.headers['x-content-type-options']).toBe('nosniff');
+    expect(live.headers['x-frame-options']).toBe('DENY');
+    expect(live.headers['referrer-policy']).toBe('no-referrer');
+    expect((await request(app.getHttpServer()).get('/docs')).status).toBe(404);
+
+    const cors = await request(app.getHttpServer())
+      .options('/health/live')
+      .set('Origin', TEST_BROWSER_ORIGIN)
+      .set('Access-Control-Request-Method', 'GET');
+    expect(cors.headers['access-control-allow-origin']).toBe(
+      TEST_BROWSER_ORIGIN,
+    );
+    expect(cors.headers['access-control-allow-credentials']).toBe('true');
+    expect(cors.headers['access-control-allow-headers']).toContain(
+      'X-CSRF-Token',
+    );
+
+    const rejectedCors = await request(app.getHttpServer())
+      .options('/health/live')
+      .set('Origin', 'https://attacker.example')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(rejectedCors.headers).not.toHaveProperty(
+      'access-control-allow-origin',
+    );
   });
 
   it('rate limits repeated login attempts with a retry hint', async () => {
@@ -353,13 +497,13 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
   }
 });
 
-function register(
+async function register(
   agent: TestAgent,
   email: string,
   role: 'candidate' | 'employer',
   displayName = 'Fluxo Principal',
 ): Promise<Response> {
-  return agent.post('/auth/register').send({
+  const registration = await agent.post('/auth/register').send({
     displayName,
     email,
     password: 'initial-password',
@@ -371,22 +515,34 @@ function register(
     acceptPrivacy: true,
     acceptGuidelines: true,
   });
+  enableCsrfForAgent(agent, registration);
+  return registration;
 }
 
 function cookieValue(response: Response, name: string): string {
-  const setCookie = response.headers['set-cookie'] as unknown as
-    | string[]
-    | undefined;
-  const cookie = setCookie?.find((candidate) =>
-    candidate.startsWith(`${name}=`),
-  );
-  const value = cookie?.split(';')[0]?.slice(name.length + 1);
+  const cookie = cookieHeader(response, name);
+  const value = cookie.split(';')[0]?.slice(name.length + 1);
 
   if (!value) {
     throw new Error(`Cookie ${name} was not set.`);
   }
 
   return value;
+}
+
+function cookieHeader(response: Response, name: string): string {
+  const setCookie = response.headers['set-cookie'] as unknown as
+    | string[]
+    | undefined;
+  const cookie = setCookie?.find((candidate) =>
+    candidate.startsWith(`${name}=`),
+  );
+
+  if (!cookie) {
+    throw new Error(`Cookie ${name} was not set.`);
+  }
+
+  return cookie;
 }
 
 async function resetTestDatabase(): Promise<void> {

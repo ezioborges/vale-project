@@ -48,12 +48,13 @@ pnpm --filter @vale/api migration:run
 
 | Endpoint                                        | Uso                                                           |
 | ----------------------------------------------- | ------------------------------------------------------------- |
-| `GET /health`                                   | Verifica aplicação e conexão com PostgreSQL.                  |
-| `GET /docs`                                     | Swagger local da API.                                         |
+| `GET /health/live`, `/health/ready`             | Separa liveness da prontidão com resposta pública mínima.     |
+| `GET /docs`                                     | Swagger apenas quando habilitado fora de produção.            |
 | `GET /auth/registration-config`                 | Publica as versões legais exigidas no cadastro.               |
+| `GET /auth/csrf`                                | Emite a prova CSRF assinada para mutações por cookie.         |
 | `POST /auth/register`                           | Cadastra candidato ou contratante e inicia sessão por cookie. |
 | `POST /auth/verify-email`                       | Consome o token de e-mail uma única vez.                      |
-| `POST /auth/login`, `/refresh`, `/logout`       | Gerencia a sessão rotativa por cookies HttpOnly.              |
+| `POST /auth/login`, `/refresh`, `/logout`       | Gerencia a sessão rotativa; refresh existe apenas no cookie.  |
 | `POST /auth/forgot-password`, `/reset-password` | Recupera senha sem revelar a existência da conta.             |
 | `PATCH /users/:id/role`                         | Altera papel com RBAC admin e auditoria.                      |
 | `PATCH /users/:id/status`                       | Suspende, desativa ou reativa com auditoria.                  |
@@ -100,3 +101,14 @@ Currículos enviados em candidaturas usam uma cópia imutável própria. O prazo
 `APPLICATION_RESUME_RETENTION_DAYS`; após candidatura terminal ou vaga encerrada, snapshots
 expirados são removidos pelo serviço de retenção. O download ocorre apenas por
 `GET /applications/:id/resume`, com autorização repetida e headers privados.
+
+## Fronteira HTTP e sessão
+
+Mutações autenticadas por cookie exigem `Origin` ou `Referer` da origem Web exata e o token
+double-submit assinado em `X-CSRF-Token`. Login, cadastro, refresh e `GET /auth/csrf` expõem o
+token no header; o cookie correspondente não é HttpOnly. Access e refresh permanecem HttpOnly.
+Em produção, os nomes usam `__Host-`/`__Secure-`, `Secure` é obrigatório e o refresh fica restrito
+ao path público `/api/auth`.
+
+O access token usa somente HS256, `issuer` e `audience` configurados, identificador `sid` da família
+de sessão e não carrega e-mail. Respostas de autenticação usam `Cache-Control: no-store`.

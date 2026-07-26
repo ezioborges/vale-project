@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+const booleanString = z
+  .enum(['true', 'false'])
+  .transform((value) => value === 'true');
+
 export const LOCAL_DEFAULTS = {
   API_CORS_ORIGIN: 'http://localhost:3000',
   WEB_APP_URL: 'http://localhost:3000',
@@ -32,8 +36,12 @@ export const envSchema = z
       .string()
       .min(32)
       .default(LOCAL_DEFAULTS.JWT_ACCESS_SECRET),
+    JWT_ISSUER: z.string().min(1).default('vale-api'),
+    JWT_AUDIENCE: z.string().min(1).default('vale-web'),
     JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+    REFRESH_COOKIE_PATH: z.string().startsWith('/').default('/auth'),
+    SWAGGER_ENABLED: booleanString.optional(),
     EMAIL_VERIFICATION_TTL_HOURS: z.coerce
       .number()
       .int()
@@ -113,6 +121,42 @@ export const envSchema = z
       return;
     }
 
+    for (const key of ['API_CORS_ORIGIN', 'WEB_APP_URL'] as const) {
+      if (!env[key].startsWith('https://')) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${key} must use HTTPS in production.`,
+          path: [key],
+        });
+      }
+    }
+
+    if (env.API_CORS_ORIGIN !== env.WEB_APP_URL) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'API_CORS_ORIGIN and WEB_APP_URL must be the same public origin in production.',
+        path: ['API_CORS_ORIGIN'],
+      });
+    }
+
+    if (env.REFRESH_COOKIE_PATH !== '/api/auth') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'REFRESH_COOKIE_PATH must be /api/auth for the production reverse-proxy topology.',
+        path: ['REFRESH_COOKIE_PATH'],
+      });
+    }
+
+    if (env.SWAGGER_ENABLED === true) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Swagger must be disabled in production.',
+        path: ['SWAGGER_ENABLED'],
+      });
+    }
+
     const forbiddenProductionDefaults: Array<keyof typeof LOCAL_DEFAULTS> = [
       'API_CORS_ORIGIN',
       'WEB_APP_URL',
@@ -149,6 +193,10 @@ export const envSchema = z
         path: ['STORAGE_DRIVER'],
       });
     }
-  });
+  })
+  .transform((env) => ({
+    ...env,
+    SWAGGER_ENABLED: env.SWAGGER_ENABLED ?? env.NODE_ENV === 'development',
+  }));
 
 export type Env = z.infer<typeof envSchema>;

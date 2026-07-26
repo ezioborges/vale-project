@@ -7,9 +7,6 @@ export class HealthResponseDto {
   @ApiProperty({ enum: ['ok', 'error'], example: 'ok' })
   status!: 'ok' | 'error';
 
-  @ApiProperty({ enum: ['ok', 'error'], example: 'ok' })
-  database!: 'ok' | 'error';
-
   @ApiProperty({ example: '2026-06-13T12:00:00.000Z' })
   timestamp!: string;
 }

@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { EmailVerifiedGuard } from './common/auth/email-verified.guard';
+import { CsrfGuard } from './common/auth/csrf.guard';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard';
 import { RolesGuard } from './common/auth/roles.guard';
 import { TermsGuard } from './common/auth/terms.guard';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
   providers: [
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: TermsGuard },
     { provide: APP_GUARD, useClass: EmailVerifiedGuard },

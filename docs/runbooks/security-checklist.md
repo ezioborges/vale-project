@@ -12,6 +12,8 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] tokens de verificação e recuperação são de uso único, expiram e não aparecem em logs de
       ambientes remotos; o provider `log` fica restrito ao desenvolvimento local;
 - [ ] cookies de produção são HttpOnly, `Secure`, têm `SameSite` e escopo mínimo;
+- [ ] mutações por cookie exigem token CSRF assinado e `Origin`/`Referer` da origem exata;
+- [ ] JWT valida algoritmo, issuer, audience, expiração e identificador de sessão sem carregar e-mail;
 - [ ] login, cadastro, recuperação e reenvio possuem rate limiting adequado.
 
 ## Autorização
@@ -37,6 +39,7 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] DTOs rejeitam campos desconhecidos e validam formato, tamanho e enum;
 - [ ] CORS permite apenas a origem necessária e credenciais somente quando exigidas;
 - [ ] headers de segurança estão configurados no ambiente publicado;
+- [ ] Swagger está ausente em produção e liveness/readiness não revelam dependências;
 - [ ] erro público não revela stack, query, segredo ou existência indevida de conta;
 - [ ] conteúdo rico é sanitizado ou recusado;
 - [ ] middleware e componentes frontend são tratados como UX, não como fronteira de segurança.
