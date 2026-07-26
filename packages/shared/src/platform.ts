@@ -88,3 +88,42 @@ export const jobModerationDecisions = [
   'reject',
 ] as const;
 export type JobModerationDecision = (typeof jobModerationDecisions)[number];
+
+export const reportTargetTypes = [
+  'job',
+  'profile',
+  'user',
+  'application',
+] as const;
+export type ReportTargetType = (typeof reportTargetTypes)[number];
+
+export const reportReasons = [
+  'discrimination',
+  'harassment',
+  'fraud',
+  'inappropriate_content',
+  'privacy',
+  'spam',
+  'other',
+] as const;
+export type ReportReason = (typeof reportReasons)[number];
+
+export const reportStatuses = [
+  'open',
+  'in_review',
+  'resolved',
+  'dismissed',
+] as const;
+export type ReportStatus = (typeof reportStatuses)[number];
+
+export const reportPriorities = ['low', 'normal', 'high', 'urgent'] as const;
+export type ReportPriority = (typeof reportPriorities)[number];
+
+export const reportDecisionActions = [
+  'start_review',
+  'resolve',
+  'dismiss',
+  'hide_job',
+  'restore_job',
+] as const;
+export type ReportDecisionAction = (typeof reportDecisionActions)[number];

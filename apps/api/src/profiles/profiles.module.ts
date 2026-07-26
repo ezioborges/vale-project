@@ -42,6 +42,6 @@ import { S3FileStorage } from './s3-file.storage';
       },
     },
   ],
-  exports: [ProfilesService],
+  exports: [ProfilesService, FILE_STORAGE],
 })
 export class ProfilesModule {}

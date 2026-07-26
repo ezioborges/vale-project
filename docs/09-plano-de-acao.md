@@ -27,9 +27,9 @@ Por isso, o MVP não deve ser tratado apenas como um portal de vagas. O núcleo 
 | --- | --- | --- |
 | 0 — Fundação técnica | Concluída | reforçar gates de CI sem reabrir a fase |
 | 1 — Identidade, termos e RBAC | Concluída | preservar os contratos durante as fases seguintes |
-| 2 — Perfis e privacidade | Concluída | preservar a política deny-by-default na Fase 3 |
-| 3 — Vagas, busca e candidaturas | Não iniciada | próximo marco autorizado |
-| 4 — Denúncias, administração e auditoria | Não iniciada | depende dos fluxos de negócio anteriores |
+| 2 — Perfis e privacidade | Concluída | preservar a política deny-by-default |
+| 3 — Vagas, busca e candidaturas | Concluída | endurecimento para piloto |
+| 4 — Denúncias, administração e auditoria | Concluída | piloto fechado, E2E e operação |
 
 As evidências e pendências detalhadas ficam em [`requirements/`](requirements/README.md). Os
 procedimentos reproduzíveis de setup, ambientes e segurança ficam em
@@ -512,26 +512,251 @@ A Fase 3 será considerada concluída somente quando:
 
 ## Fase 4: Denúncias, administração e auditoria
 
-Objetivo: fechar o ciclo de governança mínima da plataforma.
+Objetivo: fechar o ciclo de governança mínima da plataforma sem transformar o painel interno em
+uma porta de acesso irrestrito a dados pessoais. A fase deve permitir que pessoas autenticadas
+relatem abuso, que a equipe trate cada caso com prioridade e histórico, e que somente admins
+controlem contas e consultem a trilha transversal de auditoria.
 
-### Entregas
+### Resultado de negócio
 
-| Entrega            | Resultado esperado                                        |
-| ------------------ | --------------------------------------------------------- |
-| Report             | Denunciar vaga, perfil, usuário ou candidatura.           |
-| Fila de moderação  | Coordenadores analisam denúncias por status e prioridade. |
-| ModerationDecision | Decisões com motivo, autor, entidade e data.              |
-| Admin              | Gerenciar usuários, papéis internos e status de conta.    |
-| AuditLog           | Consulta restrita, filtros e metadata sem segredos.       |
+Ao final da fase, a plataforma deve suportar o seguinte fluxo em homologação:
 
-### Testes obrigatorios
+```text
+pessoa autenticada denuncia um recurso que pode acessar
+  -> recebe protocolo e acompanha somente o status
+  -> coordenação recebe a fila ordenada por risco e chegada
+  -> decisão motivada altera o estado de forma atômica
+  -> conteúdo confirmado pode ser retirado da área pública
+  -> admin controla acesso e consulta os eventos permitidos
+```
 
-| Fluxo     | Cobertura minima                                              |
-| --------- | ------------------------------------------------------------- |
-| Denuncia  | Criar denuncia autenticada e exibir status limitado ao autor. |
-| Decisao   | Coordenador resolve com motivo e gera auditoria.              |
-| Suspensao | Usuario suspenso perde acoes sensiveis.                       |
-| Admin     | Apenas admin altera roles internas.                           |
+O denunciante não recebe notas internas, descrição armazenada, prioridade, identidade de quem
+moderou ou justificativa operacional. Essa separação reduz exposição acidental e evita que o canal
+de acompanhamento se torne uma cópia do processo interno.
+
+### Escopo funcional fechado
+
+| Capacidade | Resultado esperado |
+| --- | --- |
+| Denúncia | Pessoa autenticada denuncia vaga, perfil, usuário ou candidatura que esteja autorizada a referenciar. |
+| Antiduplicidade | Existe no máximo uma denúncia `open` ou `in_review` por denunciante, tipo e recurso. |
+| Acompanhamento | Autor consulta protocolo, alvo, categoria, status e datas; o relato completo permanece restrito. |
+| Triagem | Prioridade inicial deriva da categoria e pode ser ajustada pela equipe com auditoria. |
+| Fila | Coordenação/admin filtra por estado, prioridade e tipo; ordenação usa prioridade e antiguidade. |
+| Decisão | Toda ação exige motivo, autor, estado anterior/novo e data em histórico imutável. |
+| Conteúdo público | Vaga confirmada como problemática sai imediatamente da busca e só retorna por ação explícita. |
+| Administração | Admin lista usuários e altera papel ou estado com motivo obrigatório e revogação de sessão. |
+| Auditoria consultável | Admin filtra eventos por autor, titular, ação e período sem receber IP, user-agent ou conteúdo sensível. |
+| Interface | Candidato/contratante acompanham relatos; equipe modera; admin gerencia contas e auditoria. |
+
+Ficam fora do MVP: anexos em denúncias, chat entre denunciante e equipe, SLA automático,
+notificações externas, denúncias anônimas, apelação, banimento automático, classificação por IA,
+exportação ampla de auditoria e dashboards analíticos.
+
+### Política de acesso por recurso
+
+| Operação | Autorização |
+| --- | --- |
+| Criar denúncia | pessoa autenticada, e-mail verificado e termos aceitos; o recurso precisa existir dentro do seu alcance |
+| Denunciar vaga | vaga pública/pausada/sinalizada ou vaga própria; equipe pode referenciar qualquer vaga moderável |
+| Denunciar perfil | titular, equipe ou ator que já possua acesso legítimo ao perfil |
+| Denunciar usuário | conta existente; o autor não pode denunciar a própria conta |
+| Denunciar candidatura | candidato titular, dono da vaga ou equipe; terceiros recebem resposta sem enumeração |
+| Ver denúncia própria | somente o autor, em DTO reduzido |
+| Ver relato e histórico interno | coordenador/admin |
+| Alterar prioridade e decidir | coordenador/admin |
+| Listar e alterar contas | somente admin |
+| Consultar auditoria | somente admin |
+
+Os guards de papel são apenas a primeira barreira. A resolução do alvo deve repetir autorização por
+recurso e retornar `404` quando expor a existência do objeto criaria enumeração indevida.
+
+### Estados e decisões
+
+#### Máquina de estados da denúncia
+
+| Estado atual | Ação | Próximo estado | Observação |
+| --- | --- | --- | --- |
+| `open` | `start_review` | `in_review` | reserva sem criar uma decisão final |
+| `open` ou `in_review` | `resolve` | `resolved` | confirma tratamento sem ação automática sobre o recurso |
+| `open` ou `in_review` | `dismiss` | `dismissed` | encerra sem ação material |
+| `open` ou `in_review` | `hide_job` | `resolved` | muda a vaga `approved`/`paused` para `reported` |
+| `resolved` após `hide_job` | `restore_job` | `dismissed` | restaura a vaga como `approved` e registra nova decisão |
+
+`resolved` e `dismissed` são terminais, exceto pela restauração explícita de uma vaga antes retirada.
+Decisões concorrentes devem serializar pelo registro da denúncia; somente uma decisão final vence e
+a outra recebe conflito. O motivo possui entre 10 e 1.000 caracteres e nunca é copiado para a
+auditoria transversal.
+
+#### Prioridade
+
+| Prioridade | Uso |
+| --- | --- |
+| `urgent` | risco imediato definido manualmente pela equipe |
+| `high` | discriminação, assédio, privacidade ou fraude na triagem inicial |
+| `normal` | conteúdo inadequado ou outro motivo |
+| `low` | spam sem risco imediato |
+
+A prioridade organiza trabalho, não determina culpabilidade nem executa sanções automáticas.
+
+### Administração segura de contas
+
+| Ação | Regra |
+| --- | --- |
+| Listar | paginação e filtros por nome/e-mail, papel e status |
+| Alterar papel | somente admin, motivo obrigatório e incremento de `authVersion` |
+| Suspender/desativar | somente admin, motivo obrigatório, incremento de `authVersion` e revogação de refresh tokens ativos |
+| Reativar | somente admin; conta sem e-mail verificado não pode voltar a `active` |
+| Autoproteção | admin não pode remover o próprio papel administrativo nem suspender/desativar a própria conta |
+
+O frontend melhora a experiência, mas a proteção real permanece no serviço transacional. A
+resposta administrativa nunca inclui hash de senha, tokens ou dados de perfil.
+
+### Contrato HTTP
+
+| Método e rota | Papel | Resultado |
+| --- | --- | --- |
+| `POST /reports` | autenticado | cria denúncia validada e retorna visão reduzida |
+| `GET /reports/mine` | autenticado | lista denúncias próprias por status, com paginação |
+| `GET /moderation/reports` | coordenação/admin | lista fila por status, prioridade e tipo de alvo |
+| `GET /moderation/reports/:id` | coordenação/admin | retorna relato e histórico completo |
+| `PATCH /moderation/reports/:id/priority` | coordenação/admin | altera prioridade com evento de auditoria |
+| `POST /moderation/reports/:id/decision` | coordenação/admin | registra transição motivada e possível ação sobre vaga |
+| `GET /users` | admin | lista contas com filtros e paginação |
+| `PATCH /users/:id/role` | admin | altera papel com motivo |
+| `PATCH /users/:id/status` | admin | suspende, desativa ou reativa com motivo |
+| `GET /audit-events` | admin | filtra eventos por autor, titular, ação e período |
+
+Entradas usam DTOs com allowlist, UUID validado, limites de tamanho e paginação comum. Respostas web
+são validadas pelos contratos Zod de `packages/shared`.
+
+### Dados, constraints e índices
+
+| Item | Decisão |
+| --- | --- |
+| `reports` | denunciante, titular afetado, alvo polimórfico, categoria, relato, status, prioridade e datas |
+| `moderation_decisions` | FK da denúncia, autor, ação, motivo, estado anterior/novo e data |
+| Unicidade ativa | índice parcial por denunciante + tipo + alvo em `open`/`in_review` |
+| Fila | índice por estado + prioridade + criação + ID |
+| Histórico | índice por denúncia + criação + ID |
+| Alvo polimórfico | validação de existência e autorização é feita no serviço antes da gravação |
+| Exclusão | decisões são removidas apenas com a denúncia; usuários referenciados usam `RESTRICT` |
+| Transações | criação + auditoria, prioridade + auditoria, decisão + ação no recurso + auditoria |
+
+O campo `targetUserId` materializa o titular afetado para autorização, investigação e auditoria sem
+precisar copiar dados do recurso. O conteúdo do relato permanece na tabela de domínio, não no
+`AuditEvent`.
+
+### Privacidade, segurança e observabilidade
+
+| Risco | Controle |
+| --- | --- |
+| Relato vazar ao autor ou a outro usuário | DTO público reduzido e endpoints internos com RBAC |
+| Denúncia revelar recurso privado | resolução por recurso e resposta `404` sem enumeração |
+| Spam de denúncias | unicidade parcial no banco e resposta `409` compreensível |
+| Duas decisões finais | lock pessimista e máquina de estados transacional |
+| Conta suspensa manter sessão | `authVersion` + revogação de refresh tokens |
+| Admin bloquear a própria operação | proteção de auto-rebaixamento e autobloqueio |
+| Auditoria virar repositório de dados pessoais | allowlist de metadados e DTO sem IP/user-agent |
+| Vaga denunciada continuar pública | mudança atômica para `reported` e remoção de `publishedAt` |
+
+Eventos mínimos:
+
+| Evento | Metadados permitidos |
+| --- | --- |
+| `report.created` | IDs, tipo do alvo e categoria; nunca descrição |
+| `report.priority_changed` | ID e prioridade anterior/nova |
+| `report.decision_recorded` | IDs, ação e estados; nunca motivo completo |
+| `job.reported` / `job.restored` | IDs e estado anterior quando aplicável |
+| `user.role_changed` | papéis anterior/novo e motivo administrativo |
+| `user.suspended` / `user.disabled` / `user.reactivated` | estados anterior/novo e motivo administrativo |
+
+Motivos administrativos são mantidos na auditoria por exigência de responsabilização interna; sua
+consulta é exclusiva de admin e deve seguir política de retenção e necessidade de acesso. Relatos,
+mensagens de candidatura e currículos nunca entram nesse contexto.
+
+### Interface e acessibilidade
+
+| Ator | Experiência |
+| --- | --- |
+| Pessoa autenticada | controle contextual de denúncia e página “Minhas denúncias” com status legível |
+| Coordenação | fila com filtros, prioridade textual, relato, histórico e ações motivadas |
+| Admin | visão geral, gestão de usuários, fila de denúncias e busca de auditoria |
+
+Formulários precisam de rótulos explícitos, mensagem além de cor, foco navegável, limites visíveis
+quando relevantes e estados de carregamento, vazio, erro e sucesso. A linguagem deve explicar que o
+canal é confidencial para a equipe sem prometer anonimato.
+
+### Plano de implementação em fatias verticais
+
+| Ordem | Fatia | Entregável demonstrável |
+| ---: | --- | --- |
+| 1 | Contratos e banco | enums, schemas, entidades, constraints, índices e migration reversível |
+| 2 | Criação e acompanhamento | denúncia autorizada, antiduplicidade e resposta limitada ao autor |
+| 3 | Fila e decisões | priorização, máquina de estados, concorrência e histórico |
+| 4 | Ação sobre conteúdo | retirada e restauração rastreável de vaga pública |
+| 5 | Administração | consulta e alteração segura de papéis/status com revogação |
+| 6 | Auditoria | endpoint restrito, filtros, allowlist de resposta e interface |
+| 7 | Endurecimento | RBAC negativo, regressão, acessibilidade, Swagger e evidências |
+
+### Histórias prioritárias
+
+| História | Prioridade | Concluída quando |
+| --- | --- | --- |
+| RF-36: denunciar conteúdo | P0 | ator autorizado cria uma denúncia única e recebe protocolo limitado |
+| RF-37: analisar denúncia | P0 | coordenação prioriza e decide com motivo e histórico |
+| RF-38: retirar conteúdo | P0 | vaga confirmada sai da busca na mesma transação da decisão |
+| RF-39: administrar conta | P0 | somente admin altera papel/status e sessões antigas perdem validade |
+| RF-40: consultar auditoria | P1 | somente admin filtra metadata permitida sem conteúdo sensível |
+| RF-41: acompanhar relato | P1 | autor vê estado e datas sem detalhes internos |
+
+### Critérios de aceite
+
+| Critério | Validação |
+| --- | --- |
+| Recurso é autorizado | alvo inexistente ou fora do alcance não pode ser usado para inferência |
+| Autor recebe visão mínima | resposta própria omite relato, prioridade e decisões |
+| Denúncia ativa é única | corrida ou repetição para o mesmo alvo retorna no máximo um registro ativo |
+| Fila é previsível | filtros validados e ordenação por prioridade, data e ID |
+| Decisão é rastreável | motivo, autor, estados e data são preservados no histórico |
+| Concorrência é segura | decisões finais simultâneas resultam em um sucesso e um conflito |
+| Conteúdo é governado | `hide_job` remove a vaga pública; `restore_job` exige estado compatível |
+| Conta é protegida | apenas admin altera acesso; autobloqueio administrativo falha |
+| Suspensão é efetiva | refresh tokens são revogados e access tokens antigos falham por versão |
+| Auditoria é mínima | resposta não contém IP, user-agent, relato, currículo ou mensagem |
+| Interface fecha o fluxo | denúncia, acompanhamento, moderação, usuários e auditoria são operáveis |
+| Banco é reproduzível | migration sobe e desce em PostgreSQL limpo |
+
+### Testes obrigatórios
+
+| Fluxo | Cobertura mínima |
+| --- | --- |
+| Denúncia | autenticação, recurso, descrição, autoalvo, visão do autor e duplicidade |
+| Autorização | papéis positivos/negativos e alvos privados de cada tipo |
+| Fila | filtros, prioridade inicial/manual, ordenação e DTO interno |
+| Decisão | motivo, transições, terminais, ação incompatível e auditoria |
+| Concorrência | duas decisões finais sobre a mesma denúncia |
+| Conteúdo | vaga removida da busca e restauração controlada |
+| Admin | listagem, filtros, alteração de papel/status, motivo e autoproteção |
+| Sessão | suspensão/desativação invalida tokens ativos |
+| Auditoria | RBAC, filtros por autor/titular/ação/período e ausência de campos proibidos |
+| Interface | teclado, rótulos, estados, responsividade e feedback sem depender apenas de cor |
+| Regressão | identidade, termos, perfis, vagas, candidaturas, storage e privacidade |
+
+### Definição de pronto da fase
+
+A Fase 4 será considerada concluída somente quando:
+
+1. denúncia, acompanhamento, fila, decisão, administração e auditoria funcionarem de ponta a ponta;
+2. migrations executarem e reverterem em banco limpo;
+3. papéis, propriedade, estados terminais e concorrência tiverem casos negativos automatizados;
+4. a resposta do autor e a auditoria tiverem testes contra exposição de dados sensíveis;
+5. alteração de papel/status revogar permissões ou sessões conforme a mudança;
+6. telas críticas tratarem carregamento, vazio, erro e sucesso de forma acessível;
+7. Swagger e contratos compartilhados refletirem as respostas reais;
+8. `requirements/etapa-4-governanca.md` reunir rastreabilidade, comandos e limitações;
+9. `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+   `pnpm test:integration` e `pnpm build` passarem.
 
 ## Ordem de implementação recomendada
 

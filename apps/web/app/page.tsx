@@ -13,14 +13,14 @@ const foundationItems = [
   {
     title: 'Privacidade',
     description:
-      'Dados sensíveis serão opcionais, auditáveis e protegidos por visibilidade.',
-    status: 'Planejado',
+      'Perfis e currículos são protegidos por consentimento e relação de candidatura.',
+    status: 'Em uso',
   },
   {
     title: 'Moderação',
     description:
       'Vagas começam pendentes para reduzir abuso desde o primeiro piloto.',
-    status: 'Planejado',
+    status: 'Em uso',
   },
 ];
 
@@ -32,6 +32,7 @@ export default function Home() {
           Vale Project
         </Link>
         <nav className="nav-links" aria-label="Áreas iniciais">
+          <Link href="/vagas">Explorar vagas</Link>
           <Link href="/laboratorio-ui">Laboratório UI</Link>
           <a href="#fundacao">Fundação</a>
           <a href="#contratos">Contratos</a>
@@ -41,11 +42,11 @@ export default function Home() {
 
       <section className="workspace" aria-labelledby="workspace-title">
         <div className="workspace-copy">
-          <StatusPill tone="ready">Fase 1 concluída</StatusPill>
-          <h1 id="workspace-title">Identidade do MVP</h1>
+          <StatusPill tone="ready">Fluxo central disponível</StatusPill>
+          <h1 id="workspace-title">Trabalho com segurança e respeito</h1>
           <p>
-            Cadastro público para candidatos e contratantes, login com sessão,
-            aceite de termos, confirmação de e-mail e proteção por papel.
+            Vagas moderadas, perfis com privacidade explícita e candidaturas
+            acompanhadas de ponta a ponta.
           </p>
         </div>
 
@@ -58,8 +59,8 @@ export default function Home() {
         aria-labelledby="foundation-title"
       >
         <div className="section-heading">
-          <span>Foco atual</span>
-          <h2 id="foundation-title">Segurança antes dos fluxos de vaga</h2>
+          <span>Fundação do produto</span>
+          <h2 id="foundation-title">Segurança dentro dos fluxos de vaga</h2>
         </div>
 
         <div className="item-grid">
@@ -113,13 +114,13 @@ export default function Home() {
         aria-labelledby="next-title"
       >
         <div className="section-heading">
-          <span>Sequência</span>
-          <h2 id="next-title">Próxima fatia vertical</h2>
+          <span>Fase 3</span>
+          <h2 id="next-title">O ciclo central está conectado</h2>
         </div>
         <p className="next-step">
-          Identidade, perfis e privacidade estão fechados. A próxima fatia é a
-          Fase 3: vagas moderadas, busca e candidaturas usando a visibilidade
-          definida por cada pessoa candidata.
+          Contratantes enviam vagas, a coordenação modera, candidatos buscam e
+          revisam o compartilhamento antes de se candidatar, e ambas as partes
+          acompanham o histórico sem abrir um banco global de talentos.
         </p>
       </section>
     </main>

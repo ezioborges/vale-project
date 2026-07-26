@@ -112,8 +112,9 @@ pnpm build
 7. Produção requer storage S3/R2 compatível.
 8. Auditoria de perfil registra quais campos mudaram, não seus valores.
 
-## Próximo marco
+## Continuidade verificada
 
-A Fase 3 pode criar vagas, busca e candidaturas usando estes perfis. Ao implementar
-`Application`, deve ampliar exclusivamente a política `applications_only` para o contratante dono
-da vaga associada, com testes positivos e negativos por recurso.
+A Fase 3 implementou `Application` e ampliou exclusivamente a política `applications_only` para o
+contratante dono de uma vaga associada a uma candidatura não cancelada, com testes positivos e
+negativos por recurso. As evidências estão em
+[`etapa-3-vagas-busca-candidaturas.md`](etapa-3-vagas-busca-candidaturas.md).

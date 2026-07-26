@@ -64,6 +64,19 @@ pnpm --filter @vale/api migration:run
 | `PATCH /profiles/employer/me`                   | Cria ou atualiza o perfil institucional.                      |
 | `GET /profiles/candidates/:id`                  | Aplica autorização por recurso antes de retornar o perfil.    |
 | `POST`, `GET`, `DELETE /profiles/files`         | Gerencia arquivos privados com autorização e auditoria.       |
+| `POST /jobs`, `GET /jobs/mine`                  | Cria e lista vagas próprias do contratante.                   |
+| `PATCH`, ações em `/jobs/mine/:id`              | Edita, pausa, retoma, encerra ou republica uma vaga própria.  |
+| `GET /moderation/jobs` e decisão                | Modera vagas com decisão transacional e motivo.               |
+| `GET /jobs`, `GET /jobs/:id`                    | Busca pública paginada e detalhe de vagas aprovadas.          |
+| `POST /jobs/:id/applications`                   | Cria candidatura única com snapshot privado do currículo.     |
+| `GET /applications/mine`                        | Lista candidatura e histórico do candidato.                   |
+| `GET /jobs/mine/:id/applications`               | Lista candidaturas recebidas pelo dono da vaga.               |
+| `PATCH /applications/:id/status`                | Altera status dentro da máquina de estados.                   |
+| `GET /applications/:id/resume`                  | Baixa o snapshot após autorização por recurso.                |
+| `POST /reports`, `GET /reports/mine`            | Registra e acompanha denúncia em visão reduzida.              |
+| `GET /moderation/reports` e ações               | Prioriza e decide denúncias com histórico.                    |
+| `GET /users`                                    | Lista usuários para administração restrita.                   |
+| `GET /audit-events`                             | Consulta eventos permitidos apenas para admin.                |
 
 ## Contrato do provider HTTP de e-mail
 
@@ -82,3 +95,8 @@ assinatura AWS v4 e atende S3, R2 e serviços compatíveis por path-style URL.
 
 Os arquivos não possuem URL pública. Use `GET /profiles/files/:id`, que repete a autorização do
 titular, da equipe ou da política de visibilidade do candidato.
+
+Currículos enviados em candidaturas usam uma cópia imutável própria. O prazo é configurado por
+`APPLICATION_RESUME_RETENTION_DAYS`; após candidatura terminal ou vaga encerrada, snapshots
+expirados são removidos pelo serviço de retenção. O download ocorre apenas por
+`GET /applications/:id/resume`, com autorização repetida e headers privados.

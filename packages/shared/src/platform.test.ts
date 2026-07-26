@@ -5,6 +5,8 @@ import {
   employerProfileTypes,
   jobSeniorities,
   jobStatuses,
+  reportDecisionActions,
+  reportReasons,
   profileAssetKinds,
   publicRegistrationRoles,
   userRoles,
@@ -68,6 +70,8 @@ describe('shared platform contracts', () => {
     expect(contractTypes).toContain('clt');
     expect(jobStatuses).toContain('changes_requested');
     expect(jobSeniorities).toContain('senior');
+    expect(reportReasons).toContain('discrimination');
+    expect(reportDecisionActions).toContain('hide_job');
   });
 
   it('rejects incomplete structured profile data', () => {

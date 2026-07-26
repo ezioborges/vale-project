@@ -19,7 +19,23 @@ export type AuditAction =
   | 'employer_profile.updated'
   | 'employer_profile.verification_reset'
   | 'profile_asset.replaced'
-  | 'profile_asset.deleted';
+  | 'profile_asset.deleted'
+  | 'job.created'
+  | 'job.updated'
+  | 'job.moderation_decided'
+  | 'job.paused'
+  | 'job.resumed'
+  | 'job.closed'
+  | 'job.republished'
+  | 'application.submitted'
+  | 'application.status_changed'
+  | 'application.cancelled'
+  | 'application.resume_downloaded'
+  | 'report.created'
+  | 'report.priority_changed'
+  | 'report.decision_recorded'
+  | 'job.reported'
+  | 'job.restored';
 
 @Entity('audit_events')
 export class AuditEvent {

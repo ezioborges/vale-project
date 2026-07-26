@@ -12,6 +12,8 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | ProfileAsset | Metadados do avatar, logo ou currículo armazenado de forma privada. |
 | Job | Vaga publicada por contratante. |
 | Application | Candidatura de um candidato a uma vaga. |
+| ApplicationStatusHistory | Histórico imutável das transições da candidatura. |
+| ApplicationResumeSnapshot | Cópia privada do currículo usada na candidatura. |
 | Report | Denuncia feita por usuario autenticado. |
 | ModerationDecision | Decisao tomada por coordenador ou admin. |
 | TermsAcceptance | Registro de aceite de termos. |
@@ -90,22 +92,28 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | Campo | Tipo sugerido | Observacao |
 |---|---|---|
 | id | uuid | Chave primaria. |
-| employerProfileId | uuid | Dono da vaga. |
+| employerProfileId | uuid | Perfil institucional dono da vaga. |
+| ownerUserId | uuid | Conta dona, materializada para autorização e auditoria. |
 | title | varchar | Titulo. |
+| area | varchar | Área exibida ao público. |
+| areaNormalized | varchar | Valor normalizado para filtro. |
 | description | text | Descricao completa. |
+| responsibilities | text nullable | Responsabilidades. |
 | requirements | text nullable | Requisitos. |
 | benefits | text nullable | Beneficios. |
-| location | varchar nullable | Localidade. |
+| location | varchar | Localidade. |
 | workMode | enum | `remote`, `hybrid`, `onsite`. |
 | contractType | enum | CLT, PJ, estagio, temporario ou outros. |
-| seniority | enum nullable | Junior, pleno, senior ou outros. |
+| seniority | enum | Estágio, júnior, pleno, sênior, liderança, especialista ou não aplicável. |
 | salaryMin | numeric nullable | Faixa salarial minima. |
 | salaryMax | numeric nullable | Faixa salarial maxima. |
 | salaryHiddenReason | text nullable | Justificativa se salario nao for informado. |
 | accessibilityInfo | text nullable | Acessibilidade e adaptacoes. |
 | inclusionCommitment | boolean | Aceite de diretriz inclusiva da vaga. |
-| status | enum | `draft`, `pending_review`, `approved`, `rejected`, `paused`, `closed`, `reported`. |
-| rejectionReason | text nullable | Motivo de rejeicao. |
+| status | enum | `draft`, `pending_review`, `changes_requested`, `approved`, `rejected`, `paused`, `closed`, `reported`. |
+| moderationReason | text nullable | Motivo de ajuste/rejeição mantido no recurso, não no log. |
+| moderatedByUserId | uuid nullable | Autor da última decisão. |
+| moderatedAt | timestamp nullable | Data da última decisão. |
 | publishedAt | timestamp nullable | Publicacao. |
 | closedAt | timestamp nullable | Encerramento. |
 | createdAt | timestamp | Criacao. |
@@ -120,9 +128,34 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | candidateProfileId | uuid | Candidato. |
 | status | enum | `submitted`, `under_review`, `shortlisted`, `rejected`, `cancelled`. |
 | coverMessage | text nullable | Mensagem opcional. |
-| resumeSnapshotUrl | varchar nullable | Curriculo utilizado na candidatura. |
 | submittedAt | timestamp | Data da candidatura. |
 | updatedAt | timestamp | Atualizacao. |
+
+Existe uma constraint única por `(jobId, candidateProfileId)`.
+
+## ApplicationStatusHistory
+
+| Campo | Tipo sugerido | Observacao |
+|---|---|---|
+| id | uuid | Chave primária. |
+| applicationId | uuid | Candidatura. |
+| actorUserId | uuid | Pessoa que executou a transição. |
+| fromStatus | enum nullable | Nulo somente na criação. |
+| toStatus | enum | Novo estado. |
+| changedAt | timestamp | Data da transição. |
+
+## ApplicationResumeSnapshot
+
+| Campo | Tipo sugerido | Observacao |
+|---|---|---|
+| id | uuid | Chave primária. |
+| applicationId | uuid | Relação 1:1 com candidatura. |
+| originalName | varchar | Nome normalizado para download. |
+| mimeType | varchar | Somente `application/pdf`. |
+| sizeBytes | integer | Tamanho validado. |
+| storageKey | text | Chave privada única, nunca uma URL pública. |
+| retentionUntil | timestamp | Prazo mínimo antes da limpeza de processo terminado. |
+| createdAt | timestamp | Criação do snapshot. |
 
 ## Report
 
@@ -130,24 +163,44 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 |---|---|---|
 | id | uuid | Chave primaria. |
 | reporterUserId | uuid | Autor da denuncia. |
+| targetUserId | uuid | Titular afetado, materializado para autorização e auditoria. |
 | targetType | enum | `job`, `profile`, `user`, `application`. |
 | targetId | uuid | Entidade denunciada. |
-| reason | enum | Tipo da denuncia. |
-| description | text | Detalhes. |
+| reason | enum | Discriminação, assédio, fraude, conteúdo, privacidade, spam ou outro. |
+| description | text | Relato de 20 a 2.000 caracteres, restrito à equipe. |
 | status | enum | `open`, `in_review`, `resolved`, `dismissed`. |
+| priority | enum | `low`, `normal`, `high`, `urgent`. |
+| reviewedAt | timestamp nullable | Data da decisão final. |
 | createdAt | timestamp | Criacao. |
 | updatedAt | timestamp | Atualizacao. |
+
+Existe um índice parcial único por `(reporterUserId, targetType, targetId)` enquanto a denúncia
+estiver `open` ou `in_review`.
+
+## ModerationDecision
+
+| Campo | Tipo sugerido | Observacao |
+|---|---|---|
+| id | uuid | Chave primária. |
+| reportId | uuid | Denúncia analisada. |
+| actorUserId | uuid | Coordenador/admin responsável. |
+| action | enum | `start_review`, `resolve`, `dismiss`, `hide_job`, `restore_job`. |
+| reason | text | Motivo interno de 10 a 1.000 caracteres. |
+| fromStatus | enum | Estado anterior da denúncia. |
+| toStatus | enum | Estado resultante. |
+| createdAt | timestamp | Data da decisão. |
 
 ## AuditLog
 
 | Campo | Tipo sugerido | Observacao |
 |---|---|---|
 | id | uuid | Chave primaria. |
-| actorUserId | uuid nullable | Usuario executor, quando existir. |
+| actorUserId | uuid | Usuario executor. |
+| targetUserId | uuid | Titular afetado pela ação. |
 | action | varchar | Acao executada. |
-| entityType | varchar | Tipo de entidade afetada. |
-| entityId | uuid nullable | ID da entidade. |
-| metadata | jsonb | Contexto minimo sem segredos. |
+| context | jsonb | Allowlist de IDs, estados e nomes de campos sem conteúdo sensível. |
+| ipAddress | inet nullable | Contexto de segurança, omitido na API consultável. |
+| userAgent | text nullable | Contexto de segurança, omitido na API consultável. |
 | createdAt | timestamp | Data do evento. |
 
 ## Relacionamentos iniciais
@@ -160,7 +213,10 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | EmployerProfile -> Job | 1:N |
 | Job -> Application | 1:N |
 | CandidateProfile -> Application | 1:N |
-| User -> Report | 1:N |
+| Application -> ApplicationStatusHistory | 1:N |
+| Application -> ApplicationResumeSnapshot | 1:0..1 |
+| User -> Report | 1:N como autor e como titular afetado |
+| Report -> ModerationDecision | 1:N |
 | User -> AuditLog | 1:N |
 
 ## Indices recomendados
@@ -172,6 +228,9 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | employer_profiles | userId, isVerified |
 | profile_assets | userId, `(userId, kind)` único, storageKey único |
 | jobs | employerProfileId, status, workMode, contractType, seniority, publishedAt |
-| applications | jobId, candidateProfileId, status |
-| reports | status, targetType, targetId |
-| audit_logs | actorUserId, action, entityType, createdAt |
+| applications | `(jobId, candidateProfileId)` único, candidateProfileId + data, jobId + status |
+| application_status_history | applicationId + data + id |
+| application_resume_snapshots | applicationId único, storageKey único |
+| reports | status + priority + data, reporterUserId + data, targetType + targetId, unicidade ativa parcial |
+| moderation_decisions | reportId + data + id |
+| audit_events | actorUserId, targetUserId, action, createdAt |

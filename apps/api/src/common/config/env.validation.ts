@@ -57,6 +57,13 @@ export const envSchema = z
     EMAIL_HTTP_TOKEN: z.string().min(16).optional(),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     PROFILE_STORAGE_ROOT: z.string().min(1).default('.data/profile-uploads'),
+    JOB_ACTIVE_LIMIT: z.coerce.number().int().min(1).max(20).default(3),
+    APPLICATION_RESUME_RETENTION_DAYS: z.coerce
+      .number()
+      .int()
+      .min(30)
+      .max(730)
+      .default(180),
     S3_ENDPOINT: z.string().url().optional(),
     S3_BUCKET: z.string().min(1).optional(),
     S3_REGION: z.string().min(1).optional(),

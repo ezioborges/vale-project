@@ -26,6 +26,17 @@ describe('ProfilesService privacy boundaries', () => {
   const assetRepository = {
     findBy: jest.fn(async () => []),
   };
+  const applicationQueryBuilder = {
+    innerJoin: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getExists: jest.fn(async () => false),
+  };
+  const dataSource = {
+    getRepository: jest.fn(() => ({
+      createQueryBuilder: jest.fn(() => applicationQueryBuilder),
+    })),
+  };
   const storage = {
     delete: jest.fn(async () => undefined),
     get: jest.fn(),
@@ -35,7 +46,7 @@ describe('ProfilesService privacy boundaries', () => {
     candidateRepository as unknown as Repository<CandidateProfile>,
     employerRepository as unknown as Repository<EmployerProfile>,
     assetRepository as unknown as Repository<ProfileAsset>,
-    {} as DataSource,
+    dataSource as unknown as DataSource,
     {} as AuditService,
     storage as unknown as FileStorage,
   );
@@ -45,6 +56,19 @@ describe('ProfilesService privacy boundaries', () => {
     profile.visibility = 'private';
     profile.isActive = true;
     employerRepository.findOneBy.mockResolvedValue({ isVerified: false });
+    applicationQueryBuilder.getExists.mockResolvedValue(false);
+  });
+
+  it('grants application-only access through an active application owned by the employer', async () => {
+    profile.visibility = 'applications_only';
+    applicationQueryBuilder.getExists.mockResolvedValue(true);
+
+    await expect(
+      service.getCandidateForViewer(profile.id, employer),
+    ).resolves.toMatchObject({
+      id: profile.id,
+      visibility: 'applications_only',
+    });
   });
 
   it('does not let employers cross a private or application-only profile', async () => {

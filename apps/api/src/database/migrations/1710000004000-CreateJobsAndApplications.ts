@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateJobsAndApplications1710000004000
-  implements MigrationInterface
-{
+export class CreateJobsAndApplications1710000004000 implements MigrationInterface {
   name = 'CreateJobsAndApplications1710000004000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
@@ -144,6 +142,7 @@ export class CreateJobsAndApplications1710000004000
         "mime_type" varchar(100) NOT NULL,
         "size_bytes" integer NOT NULL,
         "storage_key" text NOT NULL,
+        "retention_until" timestamptz NOT NULL,
         "created_at" timestamptz NOT NULL DEFAULT now(),
         CONSTRAINT "FK_application_resume_application"
           FOREIGN KEY ("application_id") REFERENCES "applications"("id") ON DELETE CASCADE,
@@ -175,4 +174,3 @@ export class CreateJobsAndApplications1710000004000
     await queryRunner.query('DROP TYPE "work_mode"');
   }
 }
-

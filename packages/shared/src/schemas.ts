@@ -11,6 +11,11 @@ import {
   profileAssetKinds,
   profileVisibilities,
   publicRegistrationRoles,
+  reportDecisionActions,
+  reportPriorities,
+  reportReasons,
+  reportStatuses,
+  reportTargetTypes,
   userRoles,
   userStatuses,
   workModes,
@@ -29,6 +34,11 @@ export const workModeSchema = z.enum(workModes);
 export const contractTypeSchema = z.enum(contractTypes);
 export const jobSenioritySchema = z.enum(jobSeniorities);
 export const jobModerationDecisionSchema = z.enum(jobModerationDecisions);
+export const reportTargetTypeSchema = z.enum(reportTargetTypes);
+export const reportReasonSchema = z.enum(reportReasons);
+export const reportStatusSchema = z.enum(reportStatuses);
+export const reportPrioritySchema = z.enum(reportPriorities);
+export const reportDecisionActionSchema = z.enum(reportDecisionActions);
 
 export const healthResponseSchema = z.object({
   app: z.literal('vale-api'),
@@ -373,7 +383,7 @@ export const candidateApplicationSchema = z.object({
   id: z.string().uuid(),
   status: applicationStatusSchema,
   coverMessage: z.string().nullable(),
-  resumeFileName: z.string(),
+  resumeFileName: z.string().nullable(),
   submittedAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   job: z.object({
@@ -385,25 +395,25 @@ export const candidateApplicationSchema = z.object({
   history: z.array(applicationHistoryEntrySchema),
 });
 
-export type CandidateApplication = z.infer<
-  typeof candidateApplicationSchema
->;
+export type CandidateApplication = z.infer<typeof candidateApplicationSchema>;
 
 export const receivedApplicationSchema = z.object({
   id: z.string().uuid(),
   status: applicationStatusSchema,
   coverMessage: z.string().nullable(),
-  resumeFileName: z.string(),
-  resumeDownloadPath: z.string().startsWith('/applications/'),
+  resumeFileName: z.string().nullable(),
+  resumeDownloadPath: z.string().startsWith('/applications/').nullable(),
   submittedAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  candidate: z.object({
-    id: z.string().uuid(),
-    displayName: z.string(),
-    headline: z.string().nullable(),
-    location: z.string().nullable(),
-    skills: z.array(z.string()),
-  }),
+  candidate: z
+    .object({
+      id: z.string().uuid(),
+      displayName: z.string(),
+      headline: z.string().nullable(),
+      location: z.string().nullable(),
+      skills: z.array(z.string()),
+    })
+    .nullable(),
   history: z.array(applicationHistoryEntrySchema),
 });
 
@@ -423,3 +433,83 @@ export type CandidateApplicationPage = z.infer<
 export type ReceivedApplicationPage = z.infer<
   typeof receivedApplicationPageSchema
 >;
+
+export const createReportSchema = z.object({
+  targetType: reportTargetTypeSchema,
+  targetId: z.string().uuid(),
+  reason: reportReasonSchema,
+  description: z.string().trim().min(20).max(2000),
+});
+
+export type CreateReport = z.infer<typeof createReportSchema>;
+
+export const reportDecisionSchema = z.object({
+  id: z.string().uuid(),
+  action: reportDecisionActionSchema,
+  reason: z.string(),
+  actorUserId: z.string().uuid(),
+  fromStatus: reportStatusSchema,
+  toStatus: reportStatusSchema,
+  createdAt: z.string().datetime(),
+});
+
+export type ReportDecision = z.infer<typeof reportDecisionSchema>;
+
+export const myReportSchema = z.object({
+  id: z.string().uuid(),
+  targetType: reportTargetTypeSchema,
+  targetId: z.string().uuid(),
+  reason: reportReasonSchema,
+  status: reportStatusSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type MyReport = z.infer<typeof myReportSchema>;
+
+export const moderationReportSchema = myReportSchema.extend({
+  description: z.string(),
+  priority: reportPrioritySchema,
+  targetUserId: z.string().uuid(),
+  reporter: z.object({
+    id: z.string().uuid(),
+    displayName: z.string(),
+  }),
+  decisions: z.array(reportDecisionSchema),
+});
+
+export type ModerationReport = z.infer<typeof moderationReportSchema>;
+
+export const myReportPageSchema = paginationSchema.extend({
+  items: z.array(myReportSchema),
+});
+export const moderationReportPageSchema = paginationSchema.extend({
+  items: z.array(moderationReportSchema),
+});
+export type MyReportPage = z.infer<typeof myReportPageSchema>;
+export type ModerationReportPage = z.infer<typeof moderationReportPageSchema>;
+
+export const adminUserSchema = userResponseSchema.extend({
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  lastLoginAt: z.string().datetime().nullable(),
+});
+export const adminUserPageSchema = paginationSchema.extend({
+  items: z.array(adminUserSchema),
+});
+export type AdminUser = z.infer<typeof adminUserSchema>;
+export type AdminUserPage = z.infer<typeof adminUserPageSchema>;
+
+export const auditEventSchema = z.object({
+  id: z.string().uuid(),
+  actorUserId: z.string().uuid(),
+  targetUserId: z.string().uuid(),
+  action: z.string(),
+  context: z.record(z.unknown()),
+  createdAt: z.string().datetime(),
+});
+export const auditEventPageSchema = paginationSchema.extend({
+  items: z.array(auditEventSchema),
+});
+export type AuditEventRecord = z.infer<typeof auditEventSchema>;
+export type AuditEventPage = z.infer<typeof auditEventPageSchema>;

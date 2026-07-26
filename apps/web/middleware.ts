@@ -70,7 +70,8 @@ export function middleware(request: NextRequest) {
 
   const allowed =
     (pathname.startsWith('/admin') && claims.role === 'admin') ||
-    (pathname.startsWith('/app/equipe') && claims.role === 'coordinator') ||
+    (pathname.startsWith('/app/equipe') &&
+      (claims.role === 'coordinator' || claims.role === 'admin')) ||
     (pathname.startsWith('/app/contratante') && claims.role === 'employer') ||
     (pathname.startsWith('/app/candidato') && claims.role === 'candidate');
 

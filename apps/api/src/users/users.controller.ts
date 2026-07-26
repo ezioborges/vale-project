@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -7,6 +15,7 @@ import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Roles } from '../common/auth/roles.decorator';
 import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
+import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -28,6 +37,14 @@ export class UsersController {
       ...publicUser,
       emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
     };
+  }
+
+  @Get()
+  @Roles('admin')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
+  list(@Query() query: AdminUsersQueryDto) {
+    return this.usersService.listForAdmin(query);
   }
 
   @Patch(':id/role')

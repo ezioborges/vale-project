@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { UserRole, UserStatus } from '@vale/shared';
+import type {
+  AdminUser,
+  AdminUserPage,
+  UserRole,
+  UserStatus,
+} from '@vale/shared';
 import * as argon2 from 'argon2';
 import { DataSource, IsNull, Repository } from 'typeorm';
 
@@ -13,6 +18,7 @@ import { AuditService } from '../audit/audit.service';
 import { RefreshToken } from '../auth/refresh-token.entity';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { UserResponseDto } from './dto/user-response.dto';
+import { AdminUsersQueryDto } from './dto/admin-users-query.dto';
 import { User } from './user.entity';
 
 export type CreatePublicUserInput = {
@@ -124,6 +130,35 @@ export class UsersService {
     await this.userRepository.update(userId, { lastLoginAt: new Date() });
   }
 
+  async listForAdmin(query: AdminUsersQueryDto): Promise<AdminUserPage> {
+    const builder = this.userRepository.createQueryBuilder('user');
+    if (query.q?.trim()) {
+      const value = `%${query.q.trim().replace(/[\\%_]/g, '\\$&')}%`;
+      builder.andWhere(
+        `(user.displayName ILIKE :q ESCAPE '\\' OR "user"."email"::text ILIKE :q ESCAPE '\\')`,
+        { q: value },
+      );
+    }
+    if (query.role) builder.andWhere('user.role = :role', { role: query.role });
+    if (query.status) {
+      builder.andWhere('user.status = :status', { status: query.status });
+    }
+    const [items, total] = await builder
+      .orderBy('user.createdAt', 'DESC')
+      .addOrderBy('user.id', 'ASC')
+      .skip((query.page - 1) * query.limit)
+      .take(query.limit)
+      .getManyAndCount();
+
+    return {
+      items: items.map((user) => this.toAdminResponse(user)),
+      page: query.page,
+      limit: query.limit,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / query.limit),
+    };
+  }
+
   async markEmailVerified(userId: string): Promise<User> {
     const user = await this.findById(userId);
 
@@ -154,6 +189,12 @@ export class UsersService {
 
       if (!user) {
         throw new NotFoundException('User not found.');
+      }
+
+      if (user.id === change.actorUserId && role !== 'admin') {
+        throw new BadRequestException(
+          'Administrators cannot remove their own administrative access.',
+        );
       }
 
       const previousRole = user.role;
@@ -197,6 +238,12 @@ export class UsersService {
 
       if (!user) {
         throw new NotFoundException('User not found.');
+      }
+
+      if (user.id === change.actorUserId && status !== 'active') {
+        throw new BadRequestException(
+          'Administrators cannot suspend or disable their own account.',
+        );
       }
 
       if (!this.canTransition(user.status, status, user.emailVerifiedAt)) {
@@ -257,6 +304,15 @@ export class UsersService {
       status: user.status,
       emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
       initialPath: this.getInitialPath(user),
+    };
+  }
+
+  private toAdminResponse(user: User): AdminUser {
+    return {
+      ...this.toResponse(user),
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
   }
 

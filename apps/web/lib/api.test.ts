@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createReport,
   getApiHealth,
   getMyProfile,
+  listAuditEvents,
   loginUser,
   saveCandidateProfile,
 } from './api';
@@ -139,6 +141,57 @@ describe('getApiHealth', () => {
         credentials: 'include',
         method: 'PATCH',
       }),
+    );
+  });
+
+  it('validates a report before sending sensitive text', async () => {
+    const fetcher = vi.fn();
+
+    expect(() =>
+      createReport(
+        {
+          targetType: 'job',
+          targetId: '55db8067-8865-4ad0-b88e-47d8c2cfa5d5',
+          reason: 'privacy',
+          description: 'curto',
+        },
+        fetcher,
+      ),
+    ).toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('keeps the audit client response on the public allowlist', async () => {
+    const now = new Date().toISOString();
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'a2d91539-f38d-4ca3-bc95-c4221b89d521',
+            actorUserId: '4a5021bd-e795-43f2-93a8-1bf1cfd0b846',
+            targetUserId: 'a91f45dd-12db-47d4-a567-85c46b7e8ff9',
+            action: 'report.decision_recorded',
+            context: { reportId: 'afe0e098-f714-453a-a5cc-ddc52be8c065' },
+            ipAddress: '127.0.0.1',
+            userAgent: 'private-agent',
+            createdAt: now,
+          },
+        ],
+        page: 1,
+        limit: 40,
+        total: 1,
+        totalPages: 1,
+      }),
+    });
+
+    const result = await listAuditEvents({}, fetcher);
+
+    expect(result.items[0]).not.toHaveProperty('ipAddress');
+    expect(result.items[0]).not.toHaveProperty('userAgent');
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining('/audit-events?page=1&limit=40'),
+      expect.objectContaining({ credentials: 'include' }),
     );
   });
 });

@@ -55,6 +55,8 @@ export class JobsController {
   @Get('mine')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   listMine(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: PaginationQueryDto,
@@ -65,6 +67,8 @@ export class JobsController {
   @Get('mine/:id')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   getMine(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -89,6 +93,8 @@ export class JobsController {
   @Post('mine/:id/pause')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   pause(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -100,6 +106,8 @@ export class JobsController {
   @Post('mine/:id/resume')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   resume(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -111,6 +119,8 @@ export class JobsController {
   @Post('mine/:id/close')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   close(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -122,6 +132,8 @@ export class JobsController {
   @Post('mine/:id/republish')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   republish(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -133,6 +145,8 @@ export class JobsController {
   @Get('mine/:id/applications')
   @ApiBearerAuth()
   @Roles('employer')
+  @RequireAcceptedTerms()
+  @RequireEmailVerified()
   listReceived(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -179,4 +193,3 @@ export class JobsController {
     };
   }
 }
-

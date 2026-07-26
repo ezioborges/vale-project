@@ -10,6 +10,7 @@ import { AuditEvent } from '../audit/audit-event.entity';
 import { CreateIdentityTables1710000001000 } from '../database/migrations/1710000001000-CreateIdentityTables';
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
 import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
+import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
 import { InitializeDatabase1710000000000 } from '../database/migrations/1710000000000-InitializeDatabase';
 import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { EmployerProfile } from '../profiles/employer-profile.entity';
@@ -250,7 +251,7 @@ integrationDescribe('Phase 2 profiles and privacy with PostgreSQL', () => {
     expect(allowed.body.skills).toEqual(['NestJS', 'PostgreSQL']);
     expect(
       (await employerAgent.get(`/profiles/files/${uploadedResumeId}`)).status,
-    ).toBe(200);
+    ).toBe(403);
 
     await candidateAgent
       .patch('/profiles/candidate/me/visibility')
@@ -347,6 +348,7 @@ async function resetTestDatabase(): Promise<void> {
       CreateIdentityTables1710000001000,
       CompletePhaseOne1710000002000,
       CreateProfilesAndPrivacy1710000003000,
+      CreateJobsAndApplications1710000004000,
     ],
   });
 

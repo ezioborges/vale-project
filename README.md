@@ -99,13 +99,14 @@ vale-project/
 
 | Pasta           | Uso                                                          |
 | --------------- | ------------------------------------------------------------ |
-| apps/api        | API NestJS, identidade, perfis, privacidade, termos e banco. |
-| apps/web        | Aplicacao Next.js, autenticação e edição de perfis.          |
+| apps/api        | API NestJS, domínio, governança, privacidade e banco.        |
+| apps/web        | Aplicação Next.js pública e áreas protegidas por papel.      |
 | packages/shared | Contratos Zod e tipos compartilhados.                        |
-| docs            | Documentacao de produto, arquitetura, seguranca e qualidade. |
+| docs            | Documentação de produto, arquitetura, segurança e qualidade. |
 
 ## Status
 
-Fase atual: Fases 0, 1 e 2 concluídas; Fase 3 é o próximo marco. Identidade, consentimentos,
-sessão por cookies, recuperação de senha, RBAC, perfis estruturados, visibilidade, uploads privados
-e auditoria mínima possuem cobertura automatizada com PostgreSQL real.
+Fase atual: Fases 0 a 4 concluídas e validadas localmente. O fluxo de vaga moderada até candidatura,
+snapshots privados de currículo, denúncias, gestão administrativa e auditoria consultável possuem
+cobertura automatizada com PostgreSQL real. Consulte
+[`docs/requirements/`](docs/requirements/README.md) para as evidências e limitações por fase.

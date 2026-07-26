@@ -20,7 +20,9 @@ import { Request, Response } from 'express';
 
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { CurrentUser } from '../common/auth/current-user.decorator';
+import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Roles } from '../common/auth/roles.decorator';
+import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
 import {
   ApplicationListQueryDto,
   UpdateApplicationStatusDto,
@@ -29,6 +31,8 @@ import { JobsService } from './jobs.service';
 
 @ApiTags('applications')
 @ApiBearerAuth()
+@RequireAcceptedTerms()
+@RequireEmailVerified()
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly jobsService: JobsService) {}
@@ -49,11 +53,7 @@ export class ApplicationsController {
     @Param('id') id: string,
     @Req() request: Request,
   ): Promise<CandidateApplication> {
-    return this.jobsService.cancelApplication(
-      id,
-      user,
-      this.context(request),
-    );
+    return this.jobsService.cancelApplication(id, user, this.context(request));
   }
 
   @Patch(':id/status')
@@ -112,4 +112,3 @@ export class ApplicationsController {
     );
   }
 }
-

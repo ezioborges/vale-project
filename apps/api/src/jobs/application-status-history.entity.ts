@@ -55,4 +55,3 @@ export class ApplicationStatusHistory {
   @CreateDateColumn({ name: 'changed_at', type: 'timestamptz' })
   changedAt!: Date;
 }
-

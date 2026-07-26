@@ -61,6 +61,5 @@ export class Application {
   history!: ApplicationStatusHistory[];
 
   @OneToOne(() => ApplicationResumeSnapshot, (snapshot) => snapshot.application)
-  resumeSnapshot!: ApplicationResumeSnapshot;
+  resumeSnapshot!: ApplicationResumeSnapshot | null;
 }
-

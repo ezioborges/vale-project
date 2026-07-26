@@ -22,6 +22,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
+import { Application } from '../jobs/application.entity';
 import { User } from '../users/user.entity';
 import { CandidateProfile } from './candidate-profile.entity';
 import { UpdateCandidateProfileDto } from './dto/update-candidate-profile.dto';
@@ -378,6 +379,11 @@ export class ProfilesService {
       if (asset.kind === 'logo') {
         // Institutional images do not contain candidate application data.
       } else {
+        if (asset.kind === 'resume') {
+          throw new ForbiddenException(
+            'Use o currículo preservado na candidatura.',
+          );
+        }
         const profile = await this.candidateRepository.findOneBy({
           userId: asset.userId,
         });
@@ -440,6 +446,19 @@ export class ProfilesService {
     }
 
     if (profile.visibility === 'applications_only') {
+      const hasApplicationAccess = await this.dataSource
+        .getRepository(Application)
+        .createQueryBuilder('application')
+        .innerJoin('application.job', 'job')
+        .where('application.candidateProfileId = :profileId', {
+          profileId: profile.id,
+        })
+        .andWhere('job.ownerUserId = :viewerId', { viewerId: viewer.id })
+        .andWhere('application.status != :cancelled', {
+          cancelled: 'cancelled',
+        })
+        .getExists();
+      if (hasApplicationAccess) return;
       throw new ForbiddenException(
         'Candidate data is available only through an application.',
       );

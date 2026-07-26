@@ -47,3 +47,22 @@ pnpm --filter @vale/web build
 | `app`        | Rotas e layout principal.           |
 | `components` | Componentes reutilizaveis de UI.    |
 | `lib/api.ts` | Cliente HTTP validado por contrato. |
+
+## Rotas entregues
+
+| Rota                          | Uso                                               |
+| ----------------------------- | ------------------------------------------------- |
+| `/vagas`, `/vagas/[id]`       | Busca pública, detalhe e candidatura segura.      |
+| `/app/candidato`              | Perfil e arquivos profissionais.                  |
+| `/app/candidato/candidaturas` | Acompanhamento, histórico e cancelamento.         |
+| `/app/candidato/denuncias`    | Acompanhamento limitado das próprias denúncias.   |
+| `/app/contratante`            | Perfil institucional.                             |
+| `/app/contratante/vagas`      | Gestão de vagas e candidaturas recebidas.         |
+| `/app/contratante/denuncias`  | Acompanhamento das próprias denúncias.            |
+| `/app/equipe/moderacao`       | Fila de moderação de vagas.                       |
+| `/app/equipe/denuncias`       | Triagem e decisão de denúncias.                   |
+| `/admin/usuarios`             | Papéis e estados de conta com motivo obrigatório. |
+| `/admin/auditoria`            | Consulta restrita da trilha de eventos.           |
+
+O middleware direciona por papel e status, enquanto cada operação sensível continua autorizada pela
+API. Respostas de domínio são validadas por schemas compartilhados antes de chegar aos componentes.

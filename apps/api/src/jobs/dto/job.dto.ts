@@ -172,13 +172,6 @@ export class UpdateApplicationStatusDto {
 export class ApplicationListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Transform(({ value }) => (value === '' ? undefined : value))
-  @IsIn([
-    'submitted',
-    'under_review',
-    'shortlisted',
-    'rejected',
-    'cancelled',
-  ])
+  @IsIn(['submitted', 'under_review', 'shortlisted', 'rejected', 'cancelled'])
   status?: string;
 }
-

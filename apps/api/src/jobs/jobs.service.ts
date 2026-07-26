@@ -14,7 +14,6 @@ import type {
   ApplicationStatus,
   CandidateApplication,
   CandidateApplicationPage,
-  JobInput,
   JobModerationDecision,
   JobStatus,
   ManagedJob,
@@ -44,6 +43,7 @@ import { ApplicationStatusHistory } from './application-status-history.entity';
 import { Application } from './application.entity';
 import {
   ApplicationListQueryDto,
+  JobInputDto,
   JobSearchQueryDto,
   ModerationQueueQueryDto,
   PaginationQueryDto,
@@ -88,7 +88,7 @@ export class JobsService {
 
   async createJob(
     owner: AuthenticatedUser,
-    input: JobInput,
+    input: JobInputDto,
     context: JobRequestContext,
   ): Promise<ManagedJob> {
     this.assertJobInput(input);
@@ -154,7 +154,11 @@ export class JobsService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
-    return this.page(items.map((job) => this.toManagedJob(job)), total, query);
+    return this.page(
+      items.map((job) => this.toManagedJob(job)),
+      total,
+      query,
+    );
   }
 
   async getManagedJob(
@@ -180,7 +184,7 @@ export class JobsService {
   async updateJob(
     jobId: string,
     owner: AuthenticatedUser,
-    input: JobInput,
+    input: JobInputDto,
     context: JobRequestContext,
   ): Promise<ManagedJob> {
     this.assertJobInput(input);
@@ -287,7 +291,11 @@ export class JobsService {
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     });
-    return this.page(items.map((job) => this.toManagedJob(job)), total, query);
+    return this.page(
+      items.map((job) => this.toManagedJob(job)),
+      total,
+      query,
+    );
   }
 
   async moderateJob(
@@ -391,7 +399,11 @@ export class JobsService {
       .skip((query.page - 1) * query.limit)
       .take(query.limit)
       .getManyAndCount();
-    return this.page(items.map((job) => this.toPublicJob(job)), total, query);
+    return this.page(
+      items.map((job) => this.toPublicJob(job)),
+      total,
+      query,
+    );
   }
 
   async getPublicJob(jobId: string): Promise<PublicJob> {
@@ -480,6 +492,16 @@ export class JobsService {
           mimeType: resume.mimeType,
           sizeBytes: resume.sizeBytes,
           storageKey: snapshotKey,
+          retentionUntil: new Date(
+            Date.now() +
+              this.configService.get('APPLICATION_RESUME_RETENTION_DAYS', {
+                infer: true,
+              }) *
+                24 *
+                60 *
+                60 *
+                1000,
+          ),
         });
         await manager.getRepository(ApplicationStatusHistory).save({
           applicationId: application.id,
@@ -580,8 +602,14 @@ export class JobsService {
           'A candidatura não pode ser cancelada após o encerramento da vaga.',
         );
       }
-      if (!['submitted', 'under_review', 'shortlisted'].includes(application.status)) {
-        throw new ConflictException('Esta candidatura já está em estado terminal.');
+      if (
+        !['submitted', 'under_review', 'shortlisted'].includes(
+          application.status,
+        )
+      ) {
+        throw new ConflictException(
+          'Esta candidatura já está em estado terminal.',
+        );
       }
 
       const fromStatus = application.status;
@@ -745,11 +773,7 @@ export class JobsService {
     owner: AuthenticatedUser,
     allowedFrom: JobStatus[],
     nextStatus: JobStatus,
-    action:
-      | 'job.paused'
-      | 'job.resumed'
-      | 'job.closed'
-      | 'job.republished',
+    action: 'job.paused' | 'job.resumed' | 'job.closed' | 'job.republished',
     context: JobRequestContext,
   ): Promise<ManagedJob> {
     await this.dataSource.transaction(async (manager) => {
@@ -842,7 +866,7 @@ export class JobsService {
     });
   }
 
-  private assertJobInput(input: JobInput): void {
+  private assertJobInput(input: JobInputDto): void {
     const hasMinimum = input.salaryMin !== null;
     const hasMaximum = input.salaryMax !== null;
     if (
@@ -871,7 +895,7 @@ export class JobsService {
     }
   }
 
-  private applyJobInput(job: Job, input: JobInput): void {
+  private applyJobInput(job: Job, input: JobInputDto): void {
     job.title = this.cleanRequired(input.title);
     job.area = this.cleanRequired(input.area);
     job.areaNormalized = this.normalizeFilter(input.area);
@@ -890,8 +914,8 @@ export class JobsService {
     job.inclusionCommitment = input.inclusionCommitment;
   }
 
-  private changedJobFields(job: Job, input: JobInput): string[] {
-    const fields: Array<keyof JobInput> = [
+  private changedJobFields(job: Job, input: JobInputDto): string[] {
+    const fields: Array<keyof JobInputDto> = [
       'title',
       'area',
       'description',
@@ -910,7 +934,8 @@ export class JobsService {
     ];
     return fields.filter(
       (field) =>
-        JSON.stringify(job[field as keyof Job]) !== JSON.stringify(input[field]),
+        JSON.stringify(job[field as keyof Job]) !==
+        JSON.stringify(input[field]),
     );
   }
 
@@ -969,7 +994,7 @@ export class JobsService {
       id: application.id,
       status: application.status,
       coverMessage: application.coverMessage,
-      resumeFileName: application.resumeSnapshot.originalName,
+      resumeFileName: application.resumeSnapshot?.originalName ?? null,
       submittedAt: application.submittedAt.toISOString(),
       updatedAt: application.updatedAt.toISOString(),
       job: {
@@ -984,24 +1009,27 @@ export class JobsService {
     };
   }
 
-  private toReceivedApplication(
-    application: Application,
-  ): ReceivedApplication {
+  private toReceivedApplication(application: Application): ReceivedApplication {
     return {
       id: application.id,
       status: application.status,
       coverMessage: application.coverMessage,
-      resumeFileName: application.resumeSnapshot.originalName,
-      resumeDownloadPath: `/applications/${application.id}/resume`,
+      resumeFileName: application.resumeSnapshot?.originalName ?? null,
+      resumeDownloadPath: application.resumeSnapshot
+        ? `/applications/${application.id}/resume`
+        : null,
       submittedAt: application.submittedAt.toISOString(),
       updatedAt: application.updatedAt.toISOString(),
-      candidate: {
-        id: application.candidateProfile.id,
-        displayName: application.candidateProfile.displayName,
-        headline: application.candidateProfile.headline,
-        location: application.candidateProfile.location,
-        skills: application.candidateProfile.skills,
-      },
+      candidate:
+        application.status === 'cancelled'
+          ? null
+          : {
+              id: application.candidateProfile.id,
+              displayName: application.candidateProfile.displayName,
+              headline: application.candidateProfile.headline,
+              location: application.candidateProfile.location,
+              skills: application.candidateProfile.skills,
+            },
       history: this.mapHistory(application.history),
     };
   }
@@ -1089,12 +1117,9 @@ export class JobsService {
     return value.trim().replace(/\s+/g, ' ');
   }
 
-  private cleanNullable(
-    value: string | null | undefined,
-  ): string | null {
+  private cleanNullable(value: string | null | undefined): string | null {
     if (value === null || value === undefined) return null;
     const clean = value.trim().replace(/\s+/g, ' ');
     return clean || null;
   }
 }
-

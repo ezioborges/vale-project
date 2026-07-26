@@ -103,7 +103,12 @@ export class Job {
   @Column({ name: 'salary_max', type: 'integer', nullable: true })
   salaryMax!: number | null;
 
-  @Column({ name: 'salary_hidden_reason', type: 'varchar', length: 300, nullable: true })
+  @Column({
+    name: 'salary_hidden_reason',
+    type: 'varchar',
+    length: 300,
+    nullable: true,
+  })
   salaryHiddenReason!: string | null;
 
   @Column({ name: 'accessibility_info', type: 'text', nullable: true })
@@ -149,4 +154,3 @@ export class Job {
   @OneToMany(() => Application, (application) => application.job)
   applications!: Application[];
 }
-

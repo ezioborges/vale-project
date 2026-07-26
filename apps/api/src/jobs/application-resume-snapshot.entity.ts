@@ -38,7 +38,9 @@ export class ApplicationResumeSnapshot {
   @Column({ name: 'storage_key', type: 'text' })
   storageKey!: string;
 
+  @Column({ name: 'retention_until', type: 'timestamptz' })
+  retentionUntil!: Date;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }
-

@@ -7,6 +7,7 @@ import { EmployerProfile } from '../profiles/employer-profile.entity';
 import { ProfileAsset } from '../profiles/profile-asset.entity';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { ApplicationResumeSnapshot } from './application-resume-snapshot.entity';
+import { ApplicationRetentionService } from './application-retention.service';
 import { ApplicationStatusHistory } from './application-status-history.entity';
 import { Application } from './application.entity';
 import { ApplicationsController } from './applications.controller';
@@ -34,8 +35,7 @@ import { JobsService } from './jobs.service';
     ApplicationsController,
     JobModerationController,
   ],
-  providers: [JobsService],
-  exports: [JobsService],
+  providers: [JobsService, ApplicationRetentionService],
+  exports: [JobsService, ApplicationRetentionService],
 })
 export class JobsModule {}
-
