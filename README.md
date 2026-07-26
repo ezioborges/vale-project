@@ -57,30 +57,36 @@ Servicos locais:
 Comandos de qualidade:
 
 ```bash
-pnpm lint
-pnpm test
-pnpm test:integration
-pnpm build
+pnpm validate
+pnpm audit:prod
 ```
+
+`pnpm validate` executa format check, lint, typecheck, testes unitários, integração com PostgreSQL
+real e build. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para a política de audit, atualizações do
+lockfile e exceções temporárias.
 
 ## Documentacao
 
-| Arquivo                                                                      | Descricao                                                        |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [docs/00-visao-geral.md](docs/00-visao-geral.md)                             | Visao do produto, publico, objetivos e principios.               |
-| [docs/01-requisitos-funcionais.md](docs/01-requisitos-funcionais.md)         | Requisitos funcionais essenciais do MVP.                         |
-| [docs/02-requisitos-nao-funcionais.md](docs/02-requisitos-nao-funcionais.md) | Requisitos de seguranca, performance, usabilidade e arquitetura. |
-| [docs/03-regras-de-negocio.md](docs/03-regras-de-negocio.md)                 | Regras de negocio cruciais da plataforma.                        |
-| [docs/04-arquitetura.md](docs/04-arquitetura.md)                             | Arquitetura inicial proposta para backend, frontend e dominios.  |
-| [docs/05-modelo-de-dados.md](docs/05-modelo-de-dados.md)                     | Modelo conceitual inicial de dados.                              |
-| [docs/06-seguranca-e-lgpd.md](docs/06-seguranca-e-lgpd.md)                   | Diretrizes de seguranca, privacidade e LGPD.                     |
-| [docs/07-testes-e-qualidade.md](docs/07-testes-e-qualidade.md)               | Estrategia inicial de testes e qualidade.                        |
-| [docs/08-backlog-e-roadmap.md](docs/08-backlog-e-roadmap.md)                 | Epicos, historias candidatas e roadmap do MVP.                   |
-| [docs/09-plano-de-acao.md](docs/09-plano-de-acao.md)                         | Sequencia pratica de desenvolvimento do MVP.                     |
-| [docs/10-plano-de-estudos.md](docs/10-plano-de-estudos.md)                   | Plano de estudos para entender as decisoes tecnicas.             |
-| [docs/requirements/README.md](docs/requirements/README.md)                   | Estado verificado, evidencias e pendencias por fase.             |
-| [docs/runbooks/README.md](docs/runbooks/README.md)                           | Procedimentos de setup, ambientes e seguranca.                   |
-| [docs/adr/0001-stack-inicial.md](docs/adr/0001-stack-inicial.md)             | Decisao arquitetural inicial sobre a stack.                      |
+| Arquivo                                                                                  | Descricao                                                        |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [docs/00-visao-geral.md](docs/00-visao-geral.md)                                         | Visao do produto, publico, objetivos e principios.               |
+| [docs/01-requisitos-funcionais.md](docs/01-requisitos-funcionais.md)                     | Requisitos funcionais essenciais do MVP.                         |
+| [docs/02-requisitos-nao-funcionais.md](docs/02-requisitos-nao-funcionais.md)             | Requisitos de seguranca, performance, usabilidade e arquitetura. |
+| [docs/03-regras-de-negocio.md](docs/03-regras-de-negocio.md)                             | Regras de negocio cruciais da plataforma.                        |
+| [docs/04-arquitetura.md](docs/04-arquitetura.md)                                         | Arquitetura inicial proposta para backend, frontend e dominios.  |
+| [docs/05-modelo-de-dados.md](docs/05-modelo-de-dados.md)                                 | Modelo conceitual inicial de dados.                              |
+| [docs/06-seguranca-e-lgpd.md](docs/06-seguranca-e-lgpd.md)                               | Diretrizes de seguranca, privacidade e LGPD.                     |
+| [docs/07-testes-e-qualidade.md](docs/07-testes-e-qualidade.md)                           | Estrategia inicial de testes e qualidade.                        |
+| [docs/08-backlog-e-roadmap.md](docs/08-backlog-e-roadmap.md)                             | Epicos, historias candidatas e roadmap do MVP.                   |
+| [docs/09-plano-de-acao.md](docs/09-plano-de-acao.md)                                     | Sequencia pratica de desenvolvimento do MVP.                     |
+| [docs/10-plano-de-estudos.md](docs/10-plano-de-estudos.md)                               | Plano de estudos para entender as decisoes tecnicas.             |
+| [docs/11-estudo-pnpm-workspaces.md](docs/11-estudo-pnpm-workspaces.md)                   | Estudo sobre a organizacao e os comandos do monorepo.            |
+| [docs/12-plano-aplicacao-design.md](docs/12-plano-aplicacao-design.md)                   | Sequencia de adocao do design system na interface.               |
+| [docs/13-plano-melhorias-seguranca-fluxo.md](docs/13-plano-melhorias-seguranca-fluxo.md) | Analise priorizada de seguranca, fluxo e operacao.               |
+| [docs/14-plano-acao-etapa-0.md](docs/14-plano-acao-etapa-0.md)                           | Execucao detalhada de baseline, CI e dependencias.               |
+| [docs/requirements/README.md](docs/requirements/README.md)                               | Estado verificado, evidencias e pendencias por fase.             |
+| [docs/runbooks/README.md](docs/runbooks/README.md)                                       | Procedimentos de setup, ambientes e seguranca.                   |
+| [docs/adr/0001-stack-inicial.md](docs/adr/0001-stack-inicial.md)                         | Decisao arquitetural inicial sobre a stack.                      |
 
 ## Estrutura do projeto
 

@@ -6,13 +6,31 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PNPM_VERSION: 10.12.1
+
 jobs:
   quality:
+    name: quality
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -20,17 +38,216 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Enable pnpm
-        run: corepack enable
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/quality
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/quality
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "runner=$(uname -a)"
+            printf 'lockfile_sha256='
+            sha256sum pnpm-lock.yaml | cut -d' ' -f1
+          } | tee artifacts/quality/metadata.txt
+
+      - name: Format check
+        run: |
+          set -o pipefail
+          pnpm format:check 2>&1 | tee artifacts/quality/format-check.log
+
       - name: Lint
-        run: pnpm lint
+        run: |
+          set -o pipefail
+          pnpm lint 2>&1 | tee artifacts/quality/lint.log
 
-      - name: Test
-        run: pnpm test
+      - name: Typecheck
+        run: |
+          set -o pipefail
+          pnpm typecheck 2>&1 | tee artifacts/quality/typecheck.log
 
-      - name: Build
-        run: pnpm build
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          pnpm test 2>&1 | tee artifacts/quality/test.log
+
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-evidence-${{ github.run_id }}
+          path: artifacts/quality
+          if-no-files-found: error
+          retention-days: 14
+
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/integration
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/integration
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "runner=$(uname -a)"
+            printf 'lockfile_sha256='
+            sha256sum pnpm-lock.yaml | cut -d' ' -f1
+          } | tee artifacts/integration/metadata.txt
+
+      - name: PostgreSQL integration tests
+        run: |
+          set -o pipefail
+          pnpm test:integration 2>&1 | tee artifacts/integration/test.log
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose -f docker-compose.yml down
+
+      - name: Upload integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-evidence-${{ github.run_id }}
+          path: artifacts/integration
+          if-no-files-found: error
+          retention-days: 14
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/build
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/build
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "runner=$(uname -a)"
+            printf 'lockfile_sha256='
+            sha256sum pnpm-lock.yaml | cut -d' ' -f1
+          } | tee artifacts/build/metadata.txt
+
+      - name: Build workspace
+        run: |
+          set -o pipefail
+          pnpm build 2>&1 | tee artifacts/build/build.log
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-evidence-${{ github.run_id }}
+          path: artifacts/build
+          if-no-files-found: error
+          retention-days: 14
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/security
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Production dependency audit
+        run: |
+          mkdir -p artifacts/security
+          set -o pipefail
+          AUDIT_OUTPUT_DIR=artifacts/security pnpm audit:prod 2>&1 | tee artifacts/security/command.log
+
+      - name: Add security evidence metadata
+        if: always()
+        run: |
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "runner=$(uname -a)"
+            printf 'lockfile_sha256='
+            sha256sum pnpm-lock.yaml | cut -d' ' -f1
+          } | tee -a artifacts/security/metadata.txt
+
+      - name: Upload security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-evidence-${{ github.run_id }}
+          path: artifacts/security
+          if-no-files-found: error
+          retention-days: 14

@@ -10,10 +10,22 @@
     "test": "corepack pnpm --recursive test",
     "test:integration": "corepack pnpm --filter @vale/api test:integration",
     "typecheck": "corepack pnpm --recursive typecheck",
+    "validate": "corepack pnpm format:check && corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm test:integration && corepack pnpm build",
+    "audit:prod": "node scripts/audit-prod.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down"
+  },
+  "pnpm": {
+    "overrides": {
+      "body-parser": "2.3.0",
+      "brace-expansion@^2.0.0": "2.1.2",
+      "brace-expansion@^5.0.0": "5.0.8",
+      "js-yaml@^5.0.0": "5.2.2",
+      "postcss": "8.5.18",
+      "sharp": "0.35.0"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

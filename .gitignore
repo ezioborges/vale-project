@@ -8,6 +8,7 @@ build/
 out/
 coverage/
 .data/
+*.tsbuildinfo
 
 # Environment files
 .env

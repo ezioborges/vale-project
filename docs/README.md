@@ -28,8 +28,10 @@ A implementação e a sequência de adoção estão descritas no
 | 11 | [10-plano-de-estudos.md](10-plano-de-estudos.md) |
 | 12 | [11-estudo-pnpm-workspaces.md](11-estudo-pnpm-workspaces.md) |
 | 13 | [12-plano-aplicacao-design.md](12-plano-aplicacao-design.md) |
-| 14 | [requirements/README.md](requirements/README.md) |
-| 15 | [runbooks/README.md](runbooks/README.md) |
+| 14 | [13-plano-melhorias-seguranca-fluxo.md](13-plano-melhorias-seguranca-fluxo.md) |
+| 15 | [14-plano-acao-etapa-0.md](14-plano-acao-etapa-0.md) |
+| 16 | [requirements/README.md](requirements/README.md) |
+| 17 | [runbooks/README.md](runbooks/README.md) |
 
 ## Registros operacionais
 

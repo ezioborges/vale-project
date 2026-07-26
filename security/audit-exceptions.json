@@ -1,0 +1,14 @@
+[
+  {
+    "advisory": "GHSA-mh99-v99m-4gvg",
+    "package": "brace-expansion",
+    "version": "2.1.2",
+    "path": "apps__api>typeorm>glob>minimatch>brace-expansion",
+    "severity": "high",
+    "reach": "O caminho é usado internamente pelo glob do TypeORM para localizar migrations e não recebe padrões controlados por usuário na aplicação. A versão 5.0.8 é incompatível com a API CommonJS esperada pelo minimatch 9.",
+    "mitigation": "Manter o override compatível 2.1.2, não passar padrões externos ao TypeORM, validar migrations no CI e reavaliar o advisory antes da expiração.",
+    "responsible": "Vale Project maintainers",
+    "tracking": "Etapa 0 — reavaliar após atualização compatível de TypeORM/glob/minimatch",
+    "expiresAt": "2026-08-15T23:59:59.000Z"
+  }
+]

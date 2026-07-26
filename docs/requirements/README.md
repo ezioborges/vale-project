@@ -22,6 +22,7 @@ confundir intenção do plano com funcionalidade comprovada.
 | Tema | Estado | Registro |
 | --- | --- | --- |
 | Fundação de interface e laboratório UI | Referência inicial implementada | [design-system-interface.md](design-system-interface.md) |
+| Baseline, CI e dependências da segurança | Concluída | [etapa-0-melhorias-seguranca-ci.md](etapa-0-melhorias-seguranca-ci.md) |
 
 ## Significado dos estados
 

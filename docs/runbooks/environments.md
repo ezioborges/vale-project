@@ -44,13 +44,14 @@ local está selecionado ou quando faltam parâmetros S3/R2.
 ## Ordem de promoção
 
 1. instalar dependências com `pnpm install --frozen-lockfile`;
-2. executar lint, typecheck, testes e build na revisão exata que será promovida;
+2. executar `pnpm validate` e `pnpm audit:prod` na revisão exata que será promovida;
 3. gerar backup e plano de retorno quando a migration tocar dados existentes ou remover estrutura;
 4. aplicar migrations forward-only no banco do ambiente;
 5. promover a API compatível com o schema;
 6. promover o frontend;
 7. verificar `/health`, `/docs` quando permitido e os fluxos críticos de autenticação;
-8. registrar versão, horário, executor, migrations aplicadas e resultado da verificação.
+8. registrar versão, horário, executor, SHA do lockfile, migrations aplicadas, artefatos da CI e
+   resultado da verificação.
 
 Migrations entram antes do código que depende delas. Mudanças incompatíveis devem usar expansão e
 contração: adicionar estrutura compatível, migrar uso/dados e remover a estrutura antiga somente em

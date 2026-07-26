@@ -91,12 +91,12 @@ fictícios no ambiente local.
 Em outro terminal:
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm validate
+pnpm audit:prod
 ```
+
+`pnpm validate` inclui os testes de integração e pode iniciar o container `postgres-test` na porta
+5433. O audit grava a evidência local em `.data/audit/`, que é ignorada pelo Git.
 
 Confirme também:
 
