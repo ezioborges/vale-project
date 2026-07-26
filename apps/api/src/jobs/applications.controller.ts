@@ -23,6 +23,7 @@ import { CurrentUser } from '../common/auth/current-user.decorator';
 import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Roles } from '../common/auth/roles.decorator';
 import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import {
   ApplicationListQueryDto,
   UpdateApplicationStatusDto,
@@ -74,6 +75,17 @@ export class ApplicationsController {
 
   @Get(':id/resume')
   @Roles('candidate', 'employer', 'coordinator', 'admin')
+  @RateLimit({
+    name: 'applications:resume-download',
+    buckets: [
+      {
+        name: 'user-purpose',
+        identities: ['user', { static: 'application-resume' }],
+        limit: 60,
+        windowSeconds: 3600,
+      },
+    ],
+  })
   async downloadResume(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

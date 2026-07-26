@@ -10,10 +10,17 @@ export type S3StorageConfig = {
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
+  timeoutMilliseconds: number;
+  maxRetries: number;
+  circuitFailureThreshold: number;
+  circuitResetMilliseconds: number;
 };
 
 @Injectable()
 export class S3FileStorage implements FileStorage {
+  private consecutiveFailures = 0;
+  private circuitOpenUntil = 0;
+
   constructor(private readonly config: S3StorageConfig) {}
 
   async put(key: string, content: Buffer, contentType: string): Promise<void> {
@@ -35,6 +42,48 @@ export class S3FileStorage implements FileStorage {
     content?: Buffer,
     contentType?: string,
   ): Promise<Response> {
+    if (Date.now() < this.circuitOpenUntil) {
+      throw new Error('Object storage circuit is open.');
+    }
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= this.config.maxRetries; attempt += 1) {
+      try {
+        const response = await this.singleRequest(
+          method,
+          key,
+          content,
+          contentType,
+        );
+        this.consecutiveFailures = 0;
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (error instanceof StorageResponseError && !error.retryable) {
+          break;
+        }
+        if (attempt < this.config.maxRetries) {
+          await this.backoff(attempt);
+        }
+      }
+    }
+
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures >= this.config.circuitFailureThreshold) {
+      this.circuitOpenUntil = Date.now() + this.config.circuitResetMilliseconds;
+      this.consecutiveFailures = 0;
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Object storage request failed.');
+  }
+
+  private async singleRequest(
+    method: 'PUT' | 'GET' | 'DELETE',
+    key: string,
+    content?: Buffer,
+    contentType?: string,
+  ): Promise<Response> {
     const url = this.objectUrl(key);
     const now = new Date();
     const amzDate = now
@@ -43,11 +92,15 @@ export class S3FileStorage implements FileStorage {
       .replace('Z', 'Z');
     const dateStamp = amzDate.slice(0, 8);
     const payloadHash = this.sha256(content ?? Buffer.alloc(0));
-    const canonicalHeaders =
+    let canonicalHeaders =
       `host:${url.host}\n` +
       `x-amz-content-sha256:${payloadHash}\n` +
       `x-amz-date:${amzDate}\n`;
-    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    let signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    if (method === 'PUT') {
+      canonicalHeaders += 'x-amz-server-side-encryption:AES256\n';
+      signedHeaders += ';x-amz-server-side-encryption';
+    }
     const canonicalRequest = [
       method,
       url.pathname,
@@ -75,17 +128,41 @@ export class S3FileStorage implements FileStorage {
     if (contentType) {
       headers['Content-Type'] = contentType;
     }
+    if (method === 'PUT') {
+      headers['x-amz-server-side-encryption'] = 'AES256';
+    }
 
-    const response = await fetch(url, {
-      body: content ? new Uint8Array(content) : undefined,
-      headers,
-      method,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      this.config.timeoutMilliseconds,
+    );
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        body: content ? new Uint8Array(content) : undefined,
+        headers,
+        method,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) {
-      throw new Error(`Object storage request failed with ${response.status}.`);
+      throw new StorageResponseError(
+        response.status,
+        response.status === 408 ||
+          response.status === 429 ||
+          response.status >= 500,
+      );
     }
 
     return response;
+  }
+
+  private backoff(attempt: number): Promise<void> {
+    const delay = Math.min(1000, 100 * 2 ** attempt);
+    return new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   private objectUrl(key: string): URL {
@@ -113,5 +190,14 @@ export class S3FileStorage implements FileStorage {
 
   private sha256(value: Buffer): string {
     return createHash('sha256').update(value).digest('hex');
+  }
+}
+
+class StorageResponseError extends Error {
+  constructor(
+    status: number,
+    readonly retryable: boolean,
+  ) {
+    super(`Object storage request failed with ${status}.`);
   }
 }

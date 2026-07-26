@@ -20,9 +20,21 @@ export function configureHttpApp(
   app.use(cookieParser());
   app.use(securityHeaders);
   app.enableCors({
-    allowedHeaders: ['Accept', 'Authorization', 'Content-Type', 'X-CSRF-Token'],
+    allowedHeaders: [
+      'Accept',
+      'Authorization',
+      'Content-Type',
+      'Idempotency-Key',
+      'X-CSRF-Token',
+      'X-Request-ID',
+    ],
     credentials: true,
-    exposedHeaders: ['Content-Disposition', 'X-CSRF-Token'],
+    exposedHeaders: [
+      'Content-Disposition',
+      'Idempotency-Replayed',
+      'X-CSRF-Token',
+      'X-Request-ID',
+    ],
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     origin: (origin, callback) =>
       callback(null, origin === undefined || origin === allowedOrigin),

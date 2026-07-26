@@ -14,7 +14,11 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] cookies de produção são HttpOnly, `Secure`, têm `SameSite` e escopo mínimo;
 - [ ] mutações por cookie exigem token CSRF assinado e `Origin`/`Referer` da origem exata;
 - [ ] JWT valida algoritmo, issuer, audience, expiração e identificador de sessão sem carregar e-mail;
+- [ ] requisições simultâneas compartilham um único refresh e cada chamada repete no máximo uma vez;
+- [ ] falha de refresh limpa o estado local e os cookies de sessão antes do redirecionamento;
 - [ ] login, cadastro, recuperação e reenvio possuem rate limiting adequado.
+- [ ] refresh usa família de sessão, denúncia usa usuário+alvo e arquivos usam finalidade+volume;
+- [ ] buckets expirados são limpos por job periódico, não em toda requisição.
 
 ## Autorização
 
@@ -31,8 +35,13 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] dado sensível é opcional, minimizado e protegido por consentimento explícito quando aplicável;
 - [ ] aceite registra documento, versão, usuário e data sem metadata excessiva;
 - [ ] logs e erros não contêm senha, token, currículo ou dado sensível desnecessário;
+- [ ] contexto de auditoria usa allowlist por ação e recusa valores aninhados não previstos;
 - [ ] exportação, correção, exclusão e retenção foram avaliadas para a entidade alterada;
 - [ ] respostas da API não expõem colunas internas por serialização acidental.
+- [ ] perfis e arquivos usam contratos distintos para titular, equipe e terceiro.
+- [ ] upload passa por quarentena, validação estrutural, antimalware e promoção fail-closed;
+- [ ] imagem é decodificada/reencodificada com limite de pixels e PDF criptografado/ativo é recusado;
+- [ ] download sensível é limitado e auditado sem copiar nome, conteúdo ou assinatura de malware.
 
 ## API e frontend
 
@@ -50,6 +59,9 @@ migrations ou logs devem incluir evidências positivas e negativas.
 - [ ] migration foi testada desde uma base vazia e sobre o estado anterior suportado;
 - [ ] mudança destrutiva possui backup, retorno e aprovação explícita;
 - [ ] índices e constraints preservam invariantes também sob concorrência;
+- [ ] retenção executa ao menos diariamente, usa lock entre réplicas, drena lotes e mede o vencido
+      mais antigo;
+- [ ] storage remoto usa timeout, retry limitado, circuit breaker, criptografia e bloqueio público;
 - [ ] credenciais são exclusivas por ambiente e ficam no cofre apropriado;
 - [ ] seed usa apenas identidades fictícias e permanece desabilitado em produção;
 - [ ] a revisão passou por `format:check`, lint, typecheck, testes e build.

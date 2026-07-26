@@ -1,29 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { initialPathForClaims } from './middleware';
+import { middleware } from './middleware';
 
-describe('frontend role and account-state routing', () => {
-  it.each([
-    ['candidate', '/app/candidato'],
-    ['employer', '/app/contratante'],
-    ['coordinator', '/app/equipe'],
-    ['admin', '/admin'],
-  ] as const)('routes active %s users to %s', (role, path) => {
-    expect(initialPathForClaims({ role, status: 'active' })).toBe(path);
+describe('trusted session routing boundary', () => {
+  it('delegates protected routing to the API-backed layout', () => {
+    const response = middleware();
+
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.status).toBe(200);
   });
 
-  it.each(['suspended', 'disabled'] as const)(
-    'blocks a %s account before evaluating its role',
-    (status) => {
-      expect(initialPathForClaims({ role: 'admin', status })).toBe(
-        '/conta-indisponivel',
-      );
-    },
-  );
-
-  it('keeps pending employers in their specific onboarding', () => {
-    expect(
-      initialPathForClaims({ role: 'employer', status: 'pending_email' }),
-    ).toBe('/onboarding/contratante');
+  it('does not decode or make decisions from an access-token payload', () => {
+    expect(middleware().headers.get('location')).toBeNull();
   });
 });

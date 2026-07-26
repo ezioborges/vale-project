@@ -25,6 +25,7 @@ import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Public } from '../common/auth/public.decorator';
 import { Roles } from '../common/auth/roles.decorator';
 import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import {
   ApplicationListQueryDto,
   JobInputDto,
@@ -176,6 +177,12 @@ export class JobsController {
 
   @Get()
   @Public()
+  @RateLimit({
+    name: 'jobs:public-search',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 120, windowSeconds: 60 },
+    ],
+  })
   search(@Query() query: JobSearchQueryDto): Promise<PublicJobPage> {
     return this.jobsService.searchPublicJobs(query);
   }

@@ -13,6 +13,7 @@ import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002
 import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
 import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
 import { CreateReportsAndGovernance1710000005000 } from '../database/migrations/1710000005000-CreateReportsAndGovernance';
+import { HardenAbuseUploadsRetention1710000006000 } from '../database/migrations/1710000006000-HardenAbuseUploadsRetention';
 import { InitializeDatabase1710000000000 } from '../database/migrations/1710000000000-InitializeDatabase';
 import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { Job } from '../jobs/job.entity';
@@ -208,6 +209,19 @@ integrationDescribe('Phase 4 reports, administration and audit', () => {
         'Uma segunda tentativa não deve abrir outra denúncia ativa para o mesmo recurso.',
     });
     expect(duplicate.status).toBe(409);
+
+    const rateLimited = await candidateAgent.post('/reports').send({
+      targetType: 'job',
+      targetId: jobId,
+      reason: 'spam',
+      description:
+        'Uma nova tentativa na mesma janela deve ser limitada antes de gerar custo adicional.',
+    });
+    expect(rateLimited.status).toBe(429);
+    expect(rateLimited.body.message).toBe(
+      'Too many requests. Try again later.',
+    );
+    expect(rateLimited.headers['retry-after']).toBeDefined();
 
     const mine = await candidateAgent.get('/reports/mine');
     expect(mine.status).toBe(200);
@@ -429,6 +443,7 @@ async function resetTestDatabase(): Promise<void> {
       CreateProfilesAndPrivacy1710000003000,
       CreateJobsAndApplications1710000004000,
       CreateReportsAndGovernance1710000005000,
+      HardenAbuseUploadsRetention1710000006000,
     ],
   });
 

@@ -13,8 +13,6 @@ export type AuthenticatedUser = {
 
 export type JwtPayload = {
   sub: string;
-  role: UserRole;
-  status: UserStatus;
   authVersion: number;
   sid: string;
 };

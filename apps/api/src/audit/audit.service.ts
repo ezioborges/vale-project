@@ -3,8 +3,62 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import type { AuditEventPage } from '@vale/shared';
 
-import { AuditEvent } from './audit-event.entity';
+import { AuditAction, AuditEvent } from './audit-event.entity';
 import { AuditQueryDto } from './dto/audit-query.dto';
+
+const auditContextAllowlist = {
+  'auth.registration_succeeded': ['outcome'],
+  'auth.login_succeeded': ['outcome'],
+  'auth.login_failed': ['outcome', 'reason'],
+  'auth.refresh_succeeded': ['outcome'],
+  'auth.refresh_failed': ['outcome', 'reason'],
+  'auth.logout': ['outcome'],
+  'auth.email_verified': ['outcome'],
+  'auth.password_reset': ['outcome', 'reason'],
+  'user.role_changed': ['from', 'to', 'reason'],
+  'user.suspended': ['from', 'to', 'reason'],
+  'user.disabled': ['from', 'to', 'reason'],
+  'user.reactivated': ['from', 'to', 'reason'],
+  'candidate_profile.created': ['changedFields'],
+  'candidate_profile.updated': ['changedFields'],
+  'candidate_profile.visibility_changed': ['from', 'to'],
+  'candidate_profile.activation_changed': ['from', 'to'],
+  'employer_profile.created': ['changedFields'],
+  'employer_profile.updated': ['changedFields'],
+  'employer_profile.verification_reset': ['reason'],
+  'profile_asset.replaced': ['kind', 'mimeType', 'sizeBytes'],
+  'profile_asset.deleted': ['kind'],
+  'profile_asset.downloaded': ['kind'],
+  'profile_asset.scan_failed': ['kind', 'reason'],
+  'job.created': ['jobId', 'status'],
+  'job.updated': ['jobId', 'status', 'changedFields'],
+  'job.moderation_decided': ['jobId', 'decision', 'status'],
+  'job.paused': ['jobId', 'fromStatus', 'toStatus'],
+  'job.resumed': ['jobId', 'fromStatus', 'toStatus'],
+  'job.closed': ['jobId', 'fromStatus', 'toStatus'],
+  'job.republished': ['jobId', 'fromStatus', 'toStatus'],
+  'application.submitted': ['jobId', 'applicationId'],
+  'application.status_changed': [
+    'applicationId',
+    'jobId',
+    'fromStatus',
+    'toStatus',
+  ],
+  'application.cancelled': ['applicationId', 'jobId'],
+  'application.resume_downloaded': ['applicationId', 'jobId'],
+  'report.created': ['reportId', 'targetType', 'targetId', 'reason'],
+  'report.priority_changed': ['reportId', 'from', 'to'],
+  'report.decision_recorded': [
+    'reportId',
+    'targetType',
+    'targetId',
+    'decision',
+    'fromStatus',
+    'toStatus',
+  ],
+  'job.reported': ['jobId', 'reportId', 'fromStatus'],
+  'job.restored': ['jobId', 'reportId'],
+} as const satisfies Record<AuditAction, readonly string[]>;
 
 export type RecordAuditEvent = Pick<
   AuditEvent,
@@ -35,7 +89,7 @@ export class AuditService {
         actorUserId: input.actorUserId,
         targetUserId: input.targetUserId,
         action: input.action,
-        context: input.context ?? {},
+        context: this.allowlistedContext(input.action, input.context ?? {}),
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
       }),
@@ -87,5 +141,38 @@ export class AuditService {
       total,
       totalPages: total === 0 ? 0 : Math.ceil(total / query.limit),
     };
+  }
+
+  private allowlistedContext(
+    action: AuditAction,
+    context: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const key of auditContextAllowlist[action]) {
+      if (!Object.prototype.hasOwnProperty.call(context, key)) continue;
+      const value = this.safeContextValue(context[key]);
+      if (value !== undefined) result[key] = value;
+    }
+    return result;
+  }
+
+  private safeContextValue(value: unknown): unknown {
+    if (
+      value === null ||
+      typeof value === 'boolean' ||
+      (typeof value === 'number' && Number.isFinite(value))
+    ) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value.slice(0, 500);
+    }
+    if (Array.isArray(value)) {
+      return value
+        .slice(0, 50)
+        .map((item) => this.safeContextValue(item))
+        .filter((item) => item !== undefined && !Array.isArray(item));
+    }
+    return undefined;
   }
 }

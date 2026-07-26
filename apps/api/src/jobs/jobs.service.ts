@@ -34,6 +34,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { Env } from '../common/config/env.validation';
+import { RateLimitService } from '../common/rate-limit/rate-limit.service';
 import { CandidateProfile } from '../profiles/candidate-profile.entity';
 import { EmployerProfile } from '../profiles/employer-profile.entity';
 import { FILE_STORAGE, FileStorage } from '../profiles/file-storage';
@@ -84,6 +85,7 @@ export class JobsService {
     private readonly auditService: AuditService,
     private readonly configService: ConfigService<Env, true>,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   async createJob(
@@ -751,6 +753,14 @@ export class JobsService {
       throw new NotFoundException('Currículo da candidatura não encontrado.');
     }
 
+    const snapshot = application.resumeSnapshot;
+    await this.rateLimitService.enforce({
+      identity: `user:${viewer.id}:purpose:application-resume`,
+      policyName: 'applications:resume-download:volume',
+      limit: 500,
+      windowSeconds: 86_400,
+      cost: Math.max(1, Math.ceil(snapshot.sizeBytes / 1024 / 1024)),
+    });
     await this.auditService.record({
       actorUserId: viewer.id,
       targetUserId: application.candidateProfile.userId,
@@ -759,7 +769,6 @@ export class JobsService {
       ipAddress: context.ipAddress,
       userAgent: context.userAgent,
     });
-    const snapshot = application.resumeSnapshot;
     return {
       content: await this.storage.get(snapshot.storageKey),
       fileName: snapshot.originalName,

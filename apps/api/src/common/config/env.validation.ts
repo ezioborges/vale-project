@@ -32,6 +32,8 @@ export const envSchema = z
       .min(1)
       .default(LOCAL_DEFAULTS.DATABASE_PASSWORD),
     DATABASE_NAME: z.string().min(1).default(LOCAL_DEFAULTS.DATABASE_NAME),
+    DATABASE_SSL_MODE: z.enum(['disable', 'verify-full']).default('disable'),
+    DATABASE_SSL_CA: z.string().min(1).optional(),
     JWT_ACCESS_SECRET: z
       .string()
       .min(32)
@@ -63,8 +65,33 @@ export const envSchema = z
     EMAIL_FROM: z.string().email().default(LOCAL_DEFAULTS.EMAIL_FROM),
     EMAIL_HTTP_ENDPOINT: z.string().url().optional(),
     EMAIL_HTTP_TOKEN: z.string().min(16).optional(),
+    OUTBOX_ENCRYPTION_KEY: z.string().min(1).optional(),
+    OUTBOX_DISPATCH_ENABLED: booleanString.default(false),
+    OUTBOX_POLL_INTERVAL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(5)
+      .max(3600)
+      .default(30),
+    OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
+    IDEMPOTENCY_REQUIRED: booleanString.default(false),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     PROFILE_STORAGE_ROOT: z.string().min(1).default('.data/profile-uploads'),
+    FILE_SCAN_DRIVER: z.enum(['disabled', 'clamav']).default('disabled'),
+    CLAMAV_HOST: z.string().min(1).optional(),
+    CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+    CLAMAV_TIMEOUT_MILLISECONDS: z.coerce
+      .number()
+      .int()
+      .min(500)
+      .max(30_000)
+      .default(5000),
+    RATE_LIMIT_CLEANUP_INTERVAL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(30)
+      .max(86_400)
+      .default(300),
     JOB_ACTIVE_LIMIT: z.coerce.number().int().min(1).max(20).default(3),
     APPLICATION_RESUME_RETENTION_DAYS: z.coerce
       .number()
@@ -72,11 +99,54 @@ export const envSchema = z
       .min(30)
       .max(730)
       .default(180),
+    RETENTION_JOB_INTERVAL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(86_400)
+      .default(86_400),
+    RETENTION_JOB_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(100),
+    RETENTION_JOB_MAX_ITEMS_PER_CYCLE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(10_000)
+      .default(1000),
+    RETENTION_ALERT_AGE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(3600)
+      .max(604_800)
+      .default(86_400),
     S3_ENDPOINT: z.string().url().optional(),
     S3_BUCKET: z.string().min(1).optional(),
     S3_REGION: z.string().min(1).optional(),
     S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    S3_TIMEOUT_MILLISECONDS: z.coerce
+      .number()
+      .int()
+      .min(500)
+      .max(30_000)
+      .default(5000),
+    S3_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
+    S3_CIRCUIT_FAILURE_THRESHOLD: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(20)
+      .default(5),
+    S3_CIRCUIT_RESET_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(5)
+      .max(300)
+      .default(30),
     SEED_ADMIN_EMAIL: z.string().email().optional(),
     SEED_ADMIN_PASSWORD: z.string().min(12).optional(),
   })
@@ -99,6 +169,21 @@ export const envSchema = z
       }
     }
 
+    if (env.OUTBOX_ENCRYPTION_KEY) {
+      try {
+        if (Buffer.from(env.OUTBOX_ENCRYPTION_KEY, 'base64').length !== 32) {
+          throw new Error('invalid key length');
+        }
+      } catch {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'OUTBOX_ENCRYPTION_KEY must be a base64-encoded 32-byte key.',
+          path: ['OUTBOX_ENCRYPTION_KEY'],
+        });
+      }
+    }
+
     if (env.STORAGE_DRIVER === 's3') {
       for (const key of [
         'S3_ENDPOINT',
@@ -117,8 +202,43 @@ export const envSchema = z
       }
     }
 
+    if (env.FILE_SCAN_DRIVER === 'clamav' && !env.CLAMAV_HOST) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CLAMAV_HOST is required when FILE_SCAN_DRIVER=clamav.',
+        path: ['CLAMAV_HOST'],
+      });
+    }
+
     if (env.NODE_ENV !== 'production') {
       return;
+    }
+
+    if (env.DATABASE_SSL_MODE !== 'verify-full') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'DATABASE_SSL_MODE must be verify-full in production; unverified remote database TLS is not allowed.',
+        path: ['DATABASE_SSL_MODE'],
+      });
+    }
+
+    if (!env.DATABASE_SSL_CA) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'DATABASE_SSL_CA is required in production to verify the database certificate.',
+        path: ['DATABASE_SSL_CA'],
+      });
+    }
+
+    if (!env.OUTBOX_ENCRYPTION_KEY) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'OUTBOX_ENCRYPTION_KEY is required in production to protect transient notification data.',
+        path: ['OUTBOX_ENCRYPTION_KEY'],
+      });
     }
 
     for (const key of ['API_CORS_ORIGIN', 'WEB_APP_URL'] as const) {
@@ -186,11 +306,35 @@ export const envSchema = z
       });
     }
 
+    if (env.EMAIL_HTTP_ENDPOINT && !env.EMAIL_HTTP_ENDPOINT.startsWith('https://')) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'EMAIL_HTTP_ENDPOINT must use HTTPS in production.',
+        path: ['EMAIL_HTTP_ENDPOINT'],
+      });
+    }
+
     if (env.STORAGE_DRIVER !== 's3') {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'S3-compatible storage is required in production.',
         path: ['STORAGE_DRIVER'],
+      });
+    }
+
+    if (env.S3_ENDPOINT && !env.S3_ENDPOINT.startsWith('https://')) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'S3_ENDPOINT must use HTTPS in production.',
+        path: ['S3_ENDPOINT'],
+      });
+    }
+
+    if (env.FILE_SCAN_DRIVER !== 'clamav') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'ClamAV file inspection is required in production.',
+        path: ['FILE_SCAN_DRIVER'],
       });
     }
   })

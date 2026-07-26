@@ -77,45 +77,30 @@ import {
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 const unsafeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const csrfTokens = new WeakMap<Fetcher, string>();
-
-export async function getApiHealth(
-  fetcher: typeof fetch = fetch,
-): Promise<HealthResponse> {
-  const response = await fetcher(`${apiBaseUrl}/health`, {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`API health check failed with status ${response.status}`);
-  }
-
-  return healthResponseSchema.parse(await response.json());
-}
-
-export async function getRegistrationConfig(
-  fetcher: typeof fetch = fetch,
-): Promise<RegistrationConfig> {
-  const response = await fetcher(`${apiBaseUrl}/auth/registration-config`, {
-    headers: { Accept: 'application/json' },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Registration config failed with status ${response.status}`,
-    );
-  }
-
-  return registrationConfigSchema.parse(await response.json());
-}
 
 type Fetcher = typeof fetch;
+
+export const apiErrorCodes = [
+  'BAD_REQUEST',
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'CONFLICT',
+  'PAYLOAD_TOO_LARGE',
+  'UNSUPPORTED_MEDIA_TYPE',
+  'RATE_LIMITED',
+  'SERVER_ERROR',
+  'NETWORK_ERROR',
+  'INVALID_RESPONSE',
+  'CSRF_BOOTSTRAP_FAILED',
+] as const;
+
+export type ApiErrorCode = (typeof apiErrorCodes)[number];
 
 export class ApiRequestError extends Error {
   constructor(
     public readonly status: number,
+    public readonly code: ApiErrorCode,
     message: string,
   ) {
     super(message);
@@ -123,77 +108,261 @@ export class ApiRequestError extends Error {
   }
 }
 
+type TransportOptions = {
+  authenticated: boolean;
+  csrfProtected?: boolean;
+  retryOnUnauthorized?: boolean;
+};
+
+const csrfTokens = new WeakMap<Fetcher, string>();
+const refreshFlights = new WeakMap<Fetcher, Promise<AuthResponse>>();
+
+export function getApiHealth(fetcher?: Fetcher): Promise<HealthResponse> {
+  return apiRequest('/health', healthResponseSchema.parse, {}, fetcher, {
+    authenticated: false,
+  });
+}
+
+export function getRegistrationConfig(
+  fetcher?: Fetcher,
+): Promise<RegistrationConfig> {
+  return apiRequest(
+    '/auth/registration-config',
+    registrationConfigSchema.parse,
+    {},
+    fetcher,
+    { authenticated: false },
+  );
+}
+
 async function errorFor(response: Response): Promise<ApiRequestError> {
   let message = `API request failed with status ${response.status}`;
+  let code = codeForStatus(response.status);
   try {
-    const body = (await response.json()) as { message?: string | string[] };
+    const body = (await response.json()) as {
+      code?: unknown;
+      message?: string | string[];
+    };
     if (Array.isArray(body.message)) {
       message = body.message.join(' ');
     } else if (body.message) {
       message = body.message;
     }
+    if (
+      typeof body.code === 'string' &&
+      apiErrorCodes.includes(body.code as ApiErrorCode)
+    ) {
+      code = body.code as ApiErrorCode;
+    }
   } catch {
     // Keep the status-based fallback when the response is not JSON.
   }
-  return new ApiRequestError(response.status, message);
+  return new ApiRequestError(response.status, code, message);
 }
 
-async function apiJson<TInput extends object, TOutput>(
-  path: string,
-  body: TInput,
-  parse: (value: unknown) => TOutput,
-  fetcher: Fetcher = fetch,
-  csrfProtected = false,
-): Promise<TOutput> {
-  const csrfHeaders: Record<string, string> = csrfProtected
-    ? { 'X-CSRF-Token': await csrfTokenFor(fetcher) }
-    : {};
-  const response = await fetcher(`${apiBaseUrl}${path}`, {
-    body: JSON.stringify(body),
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...csrfHeaders,
-    },
-    method: 'POST',
-  });
+function codeForStatus(status: number): ApiErrorCode {
+  if (status === 400 || status === 422) return 'BAD_REQUEST';
+  if (status === 401) return 'UNAUTHORIZED';
+  if (status === 403) return 'FORBIDDEN';
+  if (status === 404) return 'NOT_FOUND';
+  if (status === 409) return 'CONFLICT';
+  if (status === 413) return 'PAYLOAD_TOO_LARGE';
+  if (status === 415) return 'UNSUPPORTED_MEDIA_TYPE';
+  if (status === 429) return 'RATE_LIMITED';
+  return 'SERVER_ERROR';
+}
 
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+async function apiRequest<T>(
+  path: string,
+  parse: (value: unknown) => T,
+  init: RequestInit = {},
+  fetcher: Fetcher = fetch,
+  options: TransportOptions = { authenticated: true },
+): Promise<T> {
+  const response = await transport(path, init, fetcher, options);
+  if (!response.ok) throw await errorFor(response);
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'A API retornou uma resposta inválida.',
+    );
   }
 
-  rememberCsrfToken(fetcher, response);
-  return parse(await response.json());
+  try {
+    return parse(body);
+  } catch {
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'A resposta da API não corresponde ao contrato esperado.',
+    );
+  }
+}
+
+async function transport(
+  path: string,
+  init: RequestInit,
+  fetcher: Fetcher,
+  options: TransportOptions,
+  retried = false,
+): Promise<Response> {
+  const response = await send(path, init, fetcher, options);
+
+  if (response.status !== 401 || !options.authenticated) {
+    return response;
+  }
+
+  if (!retried && options.retryOnUnauthorized !== false) {
+    await refreshSingleFlight(fetcher);
+    return transport(path, init, fetcher, options, true);
+  }
+
+  const error = await errorFor(response);
+  endSession(fetcher, error);
+  throw error;
+}
+
+async function send(
+  path: string,
+  init: RequestInit,
+  fetcher: Fetcher,
+  options: TransportOptions,
+): Promise<Response> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  if (typeof init.body === 'string') {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (
+    unsafeMethods.has(method) &&
+    (options.authenticated || options.csrfProtected)
+  ) {
+    headers.set('X-CSRF-Token', await csrfTokenFor(fetcher));
+  }
+
+  try {
+    const response = await fetcher(`${apiBaseUrl}${path}`, {
+      credentials: 'include',
+      ...init,
+      headers,
+    });
+    rememberCsrfToken(fetcher, response);
+    return response;
+  } catch (error) {
+    if (error instanceof ApiRequestError) throw error;
+    throw new ApiRequestError(
+      0,
+      'NETWORK_ERROR',
+      'Não foi possível alcançar a API.',
+    );
+  }
+}
+
+function refreshSingleFlight(fetcher: Fetcher): Promise<AuthResponse> {
+  const current = refreshFlights.get(fetcher);
+  if (current) return current;
+
+  const tracked = performRefresh(fetcher)
+    .catch((error: unknown) => {
+      const sessionError =
+        error instanceof ApiRequestError
+          ? error
+          : new ApiRequestError(
+              0,
+              'NETWORK_ERROR',
+              'Não foi possível renovar a sessão.',
+            );
+      endSession(fetcher, sessionError);
+      throw sessionError;
+    })
+    .finally(() => {
+      refreshFlights.delete(fetcher);
+    });
+  refreshFlights.set(fetcher, tracked);
+  return tracked;
+}
+
+async function performRefresh(fetcher: Fetcher): Promise<AuthResponse> {
+  const response = await send(
+    '/auth/refresh',
+    { body: JSON.stringify({}), method: 'POST' },
+    fetcher,
+    { authenticated: false, csrfProtected: true },
+  );
+  if (!response.ok) throw await errorFor(response);
+
+  try {
+    return authResponseSchema.parse(await response.json());
+  } catch {
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'A renovação da sessão retornou uma resposta inválida.',
+    );
+  }
+}
+
+function endSession(fetcher: Fetcher, error: ApiRequestError): void {
+  csrfTokens.delete(fetcher);
+  if (typeof window === 'undefined') return;
+
+  window.dispatchEvent(
+    new CustomEvent('vale:session-ended', {
+      detail: { code: error.code, status: error.status },
+    }),
+  );
+  const target = error.status === 403 ? '/conta-indisponivel' : '/';
+  if (window.location.pathname !== target) {
+    window.location.replace(target);
+  }
 }
 
 export function registerUser(
   input: RegisterRequest,
   fetcher?: Fetcher,
 ): Promise<AuthResponse> {
-  return apiJson('/auth/register', input, authResponseSchema.parse, fetcher);
+  return apiRequest(
+    '/auth/register',
+    authResponseSchema.parse,
+    { body: JSON.stringify(input), method: 'POST' },
+    fetcher,
+    { authenticated: false },
+  );
 }
 
 export function loginUser(
   input: LoginRequest,
   fetcher?: Fetcher,
 ): Promise<AuthResponse> {
-  return apiJson('/auth/login', input, authResponseSchema.parse, fetcher);
+  return apiRequest(
+    '/auth/login',
+    authResponseSchema.parse,
+    { body: JSON.stringify(input), method: 'POST' },
+    fetcher,
+    { authenticated: false },
+  );
 }
 
 export function refreshSession(fetcher?: Fetcher): Promise<AuthResponse> {
-  return apiJson('/auth/refresh', {}, authResponseSchema.parse, fetcher, true);
+  return refreshSingleFlight(fetcher ?? fetch);
 }
 
 export function verifyEmail(
   token: string,
   fetcher?: Fetcher,
 ): Promise<UserResponse> {
-  return apiJson(
+  return apiRequest(
     '/auth/verify-email',
-    { token },
     userResponseSchema.parse,
+    { body: JSON.stringify({ token }), method: 'POST' },
     fetcher,
+    { authenticated: false },
   );
 }
 
@@ -201,11 +370,15 @@ export function forgotPassword(
   input: ForgotPasswordRequest,
   fetcher?: Fetcher,
 ): Promise<MessageResponse> {
-  return apiJson(
+  return apiRequest(
     '/auth/forgot-password',
-    forgotPasswordRequestSchema.parse(input),
     messageResponseSchema.parse,
+    {
+      body: JSON.stringify(forgotPasswordRequestSchema.parse(input)),
+      method: 'POST',
+    },
     fetcher,
+    { authenticated: false },
   );
 }
 
@@ -213,192 +386,152 @@ export function resetPassword(
   input: ResetPasswordRequest,
   fetcher?: Fetcher,
 ): Promise<MessageResponse> {
-  return apiJson(
+  return apiRequest(
     '/auth/reset-password',
-    resetPasswordRequestSchema.parse(input),
     messageResponseSchema.parse,
+    {
+      body: JSON.stringify(resetPasswordRequestSchema.parse(input)),
+      method: 'POST',
+    },
+    fetcher,
+    { authenticated: false },
+  );
+}
+
+export function requestEmailVerification(
+  fetcher?: Fetcher,
+): Promise<MessageResponse> {
+  return apiRequest(
+    '/auth/email-verification',
+    messageResponseSchema.parse,
+    { body: JSON.stringify({}), method: 'POST' },
     fetcher,
   );
 }
 
-export async function requestEmailVerification(
-  fetcher: Fetcher = fetch,
-): Promise<MessageResponse> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/auth/email-verification`, {
-    body: JSON.stringify({}),
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Email verification request failed with status ${response.status}`,
-    );
-  }
-
-  return messageResponseSchema.parse(await response.json());
-}
-
 export async function logoutUser(fetcher: Fetcher = fetch): Promise<void> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/auth/logout`, {
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
-    method: 'POST',
-  });
+  const response = await transport(
+    '/auth/logout',
+    { body: JSON.stringify({}), method: 'POST' },
+    fetcher,
+    { authenticated: true, retryOnUnauthorized: false },
+  );
 
   if (!response.ok && response.status !== 204) {
-    throw new Error(`API logout failed with status ${response.status}`);
+    throw await errorFor(response);
   }
   csrfTokens.delete(fetcher);
 }
 
-export async function getCurrentUser(
-  fetcher: Fetcher = fetch,
-): Promise<UserResponse> {
-  const response = await fetcher(`${apiBaseUrl}/users/me`, {
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
-  if (!response.ok) throw await errorFor(response);
-  return userResponseSchema.parse(await response.json());
+export function getCurrentUser(fetcher?: Fetcher): Promise<UserResponse> {
+  return apiRequest('/users/me', userResponseSchema.parse, {}, fetcher);
 }
 
 export async function getMyProfile(
   fetcher: Fetcher = fetch,
 ): Promise<Profile | null> {
-  const response = await fetcher(`${apiBaseUrl}/profiles/me`, {
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
+  const response = await transport('/profiles/me', {}, fetcher, {
+    authenticated: true,
   });
   if (response.status === 404) return null;
   if (!response.ok) throw await errorFor(response);
-  return profileSchema.parse(await response.json());
+  try {
+    return profileSchema.parse(await response.json());
+  } catch {
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'A resposta de perfil não corresponde ao contrato esperado.',
+    );
+  }
 }
 
-export async function saveCandidateProfile(
+export function saveCandidateProfile(
   input: CandidateProfileInput,
-  fetcher: Fetcher = fetch,
+  fetcher?: Fetcher,
 ): Promise<CandidateProfile> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/profiles/candidate/me`, {
-    body: JSON.stringify(candidateProfileInputSchema.parse(input)),
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
+  return apiRequest(
+    '/profiles/candidate/me',
+    candidateProfileSchema.parse,
+    {
+      body: JSON.stringify(candidateProfileInputSchema.parse(input)),
+      method: 'PATCH',
     },
-    method: 'PATCH',
-  });
-  if (!response.ok) throw await errorFor(response);
-  return candidateProfileSchema.parse(await response.json());
+    fetcher,
+  );
 }
 
-export async function saveEmployerProfile(
+export function saveEmployerProfile(
   input: EmployerProfileInput,
-  fetcher: Fetcher = fetch,
+  fetcher?: Fetcher,
 ): Promise<EmployerProfile> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/profiles/employer/me`, {
-    body: JSON.stringify(employerProfileInputSchema.parse(input)),
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
+  return apiRequest(
+    '/profiles/employer/me',
+    employerProfileSchema.parse,
+    {
+      body: JSON.stringify(employerProfileInputSchema.parse(input)),
+      method: 'PATCH',
     },
-    method: 'PATCH',
-  });
-  if (!response.ok) throw await errorFor(response);
-  return employerProfileSchema.parse(await response.json());
+    fetcher,
+  );
 }
 
-export async function updateCandidateVisibility(
+export function updateCandidateVisibility(
   visibility: ProfileVisibility,
-  fetcher: Fetcher = fetch,
+  fetcher?: Fetcher,
 ): Promise<CandidateProfile> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(
-    `${apiBaseUrl}/profiles/candidate/me/visibility`,
+  return apiRequest(
+    '/profiles/candidate/me/visibility',
+    candidateProfileSchema.parse,
     {
       body: JSON.stringify({ visibility }),
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken,
-      },
       method: 'PATCH',
     },
+    fetcher,
   );
-  if (!response.ok) throw await errorFor(response);
-  return candidateProfileSchema.parse(await response.json());
 }
 
-export async function updateCandidateActivation(
+export function updateCandidateActivation(
   isActive: boolean,
-  fetcher: Fetcher = fetch,
+  fetcher?: Fetcher,
 ): Promise<CandidateProfile> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(
-    `${apiBaseUrl}/profiles/candidate/me/activation`,
+  return apiRequest(
+    '/profiles/candidate/me/activation',
+    candidateProfileSchema.parse,
     {
       body: JSON.stringify({ isActive }),
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken,
-      },
       method: 'PATCH',
     },
+    fetcher,
   );
-  if (!response.ok) throw await errorFor(response);
-  return candidateProfileSchema.parse(await response.json());
 }
 
-export async function uploadProfileFile(
+export function uploadProfileFile(
   kind: ProfileAssetKind,
   file: File,
-  fetcher: Fetcher = fetch,
+  fetcher?: Fetcher,
 ): Promise<ProfileAsset> {
   const body = new FormData();
   body.set('kind', kind);
   body.set('file', file);
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/profiles/files`, {
-    body,
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'X-CSRF-Token': csrfToken,
-    },
-    method: 'POST',
-  });
-  if (!response.ok) throw await errorFor(response);
-  return profileAssetSchema.parse(await response.json());
+  return apiRequest(
+    '/profiles/files',
+    profileAssetSchema.parse,
+    { body, method: 'POST' },
+    fetcher,
+  );
 }
 
 export async function deleteProfileFile(
   assetId: string,
   fetcher: Fetcher = fetch,
 ): Promise<void> {
-  const csrfToken = await csrfTokenFor(fetcher);
-  const response = await fetcher(`${apiBaseUrl}/profiles/files/${assetId}`, {
-    credentials: 'include',
-    headers: { 'X-CSRF-Token': csrfToken },
-    method: 'DELETE',
-  });
+  const response = await transport(
+    `/profiles/files/${encodeURIComponent(assetId)}`,
+    { method: 'DELETE' },
+    fetcher,
+    { authenticated: true },
+  );
   if (!response.ok) throw await errorFor(response);
 }
 
@@ -406,8 +539,8 @@ export async function downloadProfileFile(
   asset: ProfileAsset,
   fetcher: Fetcher = fetch,
 ): Promise<void> {
-  const response = await fetcher(`${apiBaseUrl}${asset.downloadPath}`, {
-    credentials: 'include',
+  const response = await transport(asset.downloadPath, {}, fetcher, {
+    authenticated: true,
   });
   if (!response.ok) throw await errorFor(response);
   const url = URL.createObjectURL(await response.blob());
@@ -440,30 +573,6 @@ function queryString(
   return result ? `?${result}` : '';
 }
 
-async function apiRequest<T>(
-  path: string,
-  parse: (value: unknown) => T,
-  init: RequestInit = {},
-  fetcher: Fetcher = fetch,
-): Promise<T> {
-  const method = (init.method ?? 'GET').toUpperCase();
-  const headers = new Headers(init.headers);
-  headers.set('Accept', 'application/json');
-  if (init.body) {
-    headers.set('Content-Type', 'application/json');
-  }
-  if (unsafeMethods.has(method)) {
-    headers.set('X-CSRF-Token', await csrfTokenFor(fetcher));
-  }
-  const response = await fetcher(`${apiBaseUrl}${path}`, {
-    credentials: 'include',
-    ...init,
-    headers,
-  });
-  if (!response.ok) throw await errorFor(response);
-  return parse(await response.json());
-}
-
 async function csrfTokenFor(fetcher: Fetcher): Promise<string> {
   const cookieToken = csrfTokenFromDocument();
   if (cookieToken) {
@@ -476,20 +585,43 @@ async function csrfTokenFor(fetcher: Fetcher): Promise<string> {
     return cached;
   }
 
-  const response = await fetcher(`${apiBaseUrl}/auth/csrf`, {
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
+  let response: Response;
+  try {
+    response = await fetcher(`${apiBaseUrl}/auth/csrf`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+  } catch {
+    throw new ApiRequestError(
+      0,
+      'CSRF_BOOTSTRAP_FAILED',
+      'Não foi possível inicializar a proteção CSRF.',
+    );
+  }
   if (!response.ok) {
     throw new ApiRequestError(
       response.status,
+      'CSRF_BOOTSTRAP_FAILED',
       `CSRF bootstrap failed with status ${response.status}`,
     );
   }
 
-  const body = (await response.json()) as { csrfToken?: unknown };
+  let body: { csrfToken?: unknown };
+  try {
+    body = (await response.json()) as { csrfToken?: unknown };
+  } catch {
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'CSRF bootstrap returned an invalid response.',
+    );
+  }
   if (typeof body.csrfToken !== 'string' || body.csrfToken.length < 32) {
-    throw new Error('CSRF bootstrap returned an invalid token.');
+    throw new ApiRequestError(
+      response.status,
+      'INVALID_RESPONSE',
+      'CSRF bootstrap returned an invalid token.',
+    );
   }
   csrfTokens.set(fetcher, body.csrfToken);
   return body.csrfToken;
@@ -526,6 +658,7 @@ export function searchJobs(
     publicJobPageSchema.parse,
     {},
     fetcher,
+    { authenticated: false },
   );
 }
 
@@ -538,6 +671,7 @@ export function getPublicJob(
     publicJobSchema.parse,
     {},
     fetcher,
+    { authenticated: false },
   );
 }
 
@@ -693,9 +827,11 @@ export async function downloadApplicationResume(
   fileName: string,
   fetcher: Fetcher = fetch,
 ): Promise<void> {
-  const response = await fetcher(
-    `${apiBaseUrl}/applications/${encodeURIComponent(applicationId)}/resume`,
-    { credentials: 'include' },
+  const response = await transport(
+    `/applications/${encodeURIComponent(applicationId)}/resume`,
+    {},
+    fetcher,
+    { authenticated: true },
   );
   if (!response.ok) throw await errorFor(response);
   const url = URL.createObjectURL(await response.blob());

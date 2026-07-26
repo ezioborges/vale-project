@@ -203,6 +203,12 @@ export const profileAssetSchema = z.object({
 
 export type ProfileAsset = z.infer<typeof profileAssetSchema>;
 
+export const profileImageReferenceSchema = z.object({
+  downloadPath: z.string().startsWith('/profiles/files/'),
+});
+
+export type ProfileImageReference = z.infer<typeof profileImageReferenceSchema>;
+
 export const candidateProfileSchema = candidateProfileInputSchema.extend({
   id: z.string().uuid(),
   kind: z.literal('candidate'),
@@ -217,6 +223,31 @@ export const candidateProfileSchema = candidateProfileInputSchema.extend({
 });
 
 export type CandidateProfile = z.infer<typeof candidateProfileSchema>;
+
+export const candidateTeamProfileSchema = candidateProfileInputSchema.extend({
+  id: z.string().uuid(),
+  kind: z.literal('candidate'),
+  userId: z.string().uuid(),
+  visibility: profileVisibilitySchema,
+  isActive: z.boolean(),
+  avatar: profileAssetSchema.nullable(),
+  resume: profileAssetSchema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type CandidateTeamProfile = z.infer<typeof candidateTeamProfileSchema>;
+
+export const candidateThirdPartyProfileSchema =
+  candidateProfileInputSchema.extend({
+    id: z.string().uuid(),
+    kind: z.literal('candidate'),
+    avatar: profileImageReferenceSchema.nullable(),
+  });
+
+export type CandidateThirdPartyProfile = z.infer<
+  typeof candidateThirdPartyProfileSchema
+>;
 
 export const employerProfileSchema = employerProfileInputBaseSchema.extend({
   id: z.string().uuid(),

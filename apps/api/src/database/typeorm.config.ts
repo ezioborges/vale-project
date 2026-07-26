@@ -17,5 +17,9 @@ export function getTypeOrmOptions(): TypeOrmModuleOptions {
     migrationsRun: false,
     migrations:
       env.NODE_ENV === 'test' ? [] : ['dist/database/migrations/*.js'],
+    ssl:
+      env.DATABASE_SSL_MODE === 'verify-full'
+        ? { ca: env.DATABASE_SSL_CA, rejectUnauthorized: true }
+        : false,
   };
 }

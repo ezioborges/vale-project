@@ -7,6 +7,14 @@ import {
 } from 'typeorm';
 
 export type AuditAction =
+  | 'auth.registration_succeeded'
+  | 'auth.login_succeeded'
+  | 'auth.login_failed'
+  | 'auth.refresh_succeeded'
+  | 'auth.refresh_failed'
+  | 'auth.logout'
+  | 'auth.email_verified'
+  | 'auth.password_reset'
   | 'user.role_changed'
   | 'user.suspended'
   | 'user.disabled'
@@ -20,6 +28,8 @@ export type AuditAction =
   | 'employer_profile.verification_reset'
   | 'profile_asset.replaced'
   | 'profile_asset.deleted'
+  | 'profile_asset.downloaded'
+  | 'profile_asset.scan_failed'
   | 'job.created'
   | 'job.updated'
   | 'job.moderation_decided'

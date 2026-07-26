@@ -244,6 +244,9 @@ integrationDescribe('Phase 2 profiles and privacy with PostgreSQL', () => {
     );
     expect(allowed.status).toBe(200);
     expect(allowed.body.skills).toEqual(['NestJS', 'PostgreSQL']);
+    expect(allowed.body).not.toHaveProperty('userId');
+    expect(allowed.body).not.toHaveProperty('visibility');
+    expect(allowed.body).not.toHaveProperty('resume');
     expect(
       (await employerAgent.get(`/profiles/files/${uploadedResumeId}`)).status,
     ).toBe(403);
@@ -264,10 +267,15 @@ integrationDescribe('Phase 2 profiles and privacy with PostgreSQL', () => {
       (await employerAgent.get(`/profiles/candidates/${candidateProfileId}`))
         .status,
     ).toBe(403);
-    expect(
-      (await candidateAgent.get(`/profiles/candidates/${candidateProfileId}`))
-        .status,
-    ).toBe(200);
+    const ownerView = await candidateAgent.get(
+      `/profiles/candidates/${candidateProfileId}`,
+    );
+    expect(ownerView.status).toBe(200);
+    expect(ownerView.body.resume).toMatchObject({
+      id: uploadedResumeId,
+      fileName: expect.any(String),
+      sizeBytes: expect.any(Number),
+    });
   });
 
   it('audits sensitive changes without copying profile values', async () => {

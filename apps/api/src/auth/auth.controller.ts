@@ -74,7 +74,23 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @RateLimit({ name: 'auth:register', limit: 5, windowSeconds: 600 })
+  @RateLimit({
+    name: 'auth:register',
+    buckets: [
+      {
+        name: 'ip',
+        identities: ['ip'],
+        limit: 20,
+        windowSeconds: 600,
+      },
+      {
+        name: 'target',
+        identities: [{ body: 'email', normalize: 'email' }],
+        limit: 5,
+        windowSeconds: 3600,
+      },
+    ],
+  })
   @ApiOkResponse({ type: AuthResponseDto })
   async register(
     @Body() body: RegisterDto,
@@ -97,7 +113,18 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
-  @RateLimit({ name: 'auth:login', limit: 10, windowSeconds: 300 })
+  @RateLimit({
+    name: 'auth:login',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 30, windowSeconds: 300 },
+      {
+        name: 'target',
+        identities: [{ body: 'email', normalize: 'email' }],
+        limit: 10,
+        windowSeconds: 300,
+      },
+    ],
+  })
   @ApiOkResponse({ type: AuthResponseDto })
   async login(
     @Body() body: LoginDto,
@@ -121,30 +148,46 @@ export class AuthController {
   @Post('refresh')
   @CsrfProtected()
   @HttpCode(200)
-  @RateLimit({ name: 'auth:refresh', limit: 30, windowSeconds: 60 })
+  @RateLimit({
+    name: 'auth:refresh',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 60, windowSeconds: 60 },
+      {
+        name: 'family',
+        identities: ['refreshFamily'],
+        limit: 30,
+        windowSeconds: 60,
+      },
+    ],
+  })
   @ApiOkResponse({ type: AuthResponseDto })
   async refresh(
     @Body() _body: RefreshTokenDto,
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponseDto> {
-    const refreshToken = this.refreshTokenFrom(request);
+    try {
+      const refreshToken = this.refreshTokenFrom(request);
 
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token is required.');
+      if (!refreshToken) {
+        throw new UnauthorizedException('Refresh token is required.');
+      }
+
+      const result = await this.authService.refresh(
+        refreshToken,
+        this.getMetadata(request),
+      );
+      this.setAuthCookies(
+        response,
+        result.accessToken,
+        result.refreshToken,
+        request,
+      );
+      return this.withoutTokens(result);
+    } catch (error) {
+      this.clearAuthCookies(response);
+      throw error;
     }
-
-    const result = await this.authService.refresh(
-      refreshToken,
-      this.getMetadata(request),
-    );
-    this.setAuthCookies(
-      response,
-      result.accessToken,
-      result.refreshToken,
-      request,
-    );
-    return this.withoutTokens(result);
   }
 
   @Public()
@@ -163,7 +206,18 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(200)
-  @RateLimit({ name: 'auth:verify-email', limit: 20, windowSeconds: 300 })
+  @RateLimit({
+    name: 'auth:verify-email',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 30, windowSeconds: 300 },
+      {
+        name: 'target',
+        identities: [{ body: 'token' }],
+        limit: 10,
+        windowSeconds: 900,
+      },
+    ],
+  })
   async verifyEmail(@Body() body: VerifyEmailDto) {
     return this.authService.verifyEmail(body.token);
   }
@@ -172,8 +226,10 @@ export class AuthController {
   @HttpCode(200)
   @RateLimit({
     name: 'auth:email-verification',
-    limit: 5,
-    windowSeconds: 900,
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 20, windowSeconds: 900 },
+      { name: 'user', identities: ['user'], limit: 5, windowSeconds: 900 },
+    ],
   })
   @ApiBearerAuth()
   requestEmailVerification(@CurrentUser() user: AuthenticatedUser) {
@@ -183,7 +239,18 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.ACCEPTED)
-  @RateLimit({ name: 'auth:forgot-password', limit: 5, windowSeconds: 900 })
+  @RateLimit({
+    name: 'auth:forgot-password',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 20, windowSeconds: 900 },
+      {
+        name: 'target',
+        identities: [{ body: 'email', normalize: 'email' }],
+        limit: 5,
+        windowSeconds: 900,
+      },
+    ],
+  })
   forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.requestPasswordReset(body.email);
   }
@@ -191,7 +258,18 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(200)
-  @RateLimit({ name: 'auth:reset-password', limit: 10, windowSeconds: 900 })
+  @RateLimit({
+    name: 'auth:reset-password',
+    buckets: [
+      { name: 'ip', identities: ['ip'], limit: 20, windowSeconds: 900 },
+      {
+        name: 'target',
+        identities: [{ body: 'token' }],
+        limit: 10,
+        windowSeconds: 900,
+      },
+    ],
+  })
   async resetPassword(
     @Body() body: ResetPasswordDto,
     @Req() request: Request,

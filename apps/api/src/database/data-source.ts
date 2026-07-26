@@ -16,4 +16,8 @@ export default new DataSource({
   synchronize: false,
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/database/migrations/*.ts'],
+  ssl:
+    env.DATABASE_SSL_MODE === 'verify-full'
+      ? { ca: env.DATABASE_SSL_CA, rejectUnauthorized: true }
+      : false,
 });

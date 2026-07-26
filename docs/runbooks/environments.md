@@ -10,9 +10,10 @@ Em produção, navegador, Web e API usam uma única origem pública HTTPS. O pro
 exemplo, o navegador acessa `https://vale.example/api/auth/login`, enquanto o controller recebe
 `/auth/login`.
 
-Essa topologia é obrigatória porque mantém os cookies host-only disponíveis ao middleware Web e à
-API sem configurar `Domain`, reduz CORS a uma origem exata e permite os prefixos `__Host-` e
-`__Secure-`. O proxy deve preservar `Origin`, `Referer`, `Cookie`, `Set-Cookie` e
+Essa topologia é obrigatória porque mantém os cookies host-only sem configurar `Domain`, reduz CORS
+a uma origem exata e permite os prefixos `__Host-` e `__Secure-`. O refresh permanece restrito ao
+path `/api/auth` e, por isso, decisões de sessão das páginas são delegadas pelos layouts Web à API,
+não ao middleware. O proxy deve preservar `Origin`, `Referer`, `Cookie`, `Set-Cookie` e
 `X-CSRF-Token` nas rotas `/api/*` e limitar o corpo das requisições.
 
 Em desenvolvimento local, Web e API continuam em portas diferentes de `localhost`. Nesse caso,
@@ -49,7 +50,12 @@ path do refresh é `/auth`.
 | `EMAIL_HTTP_*` | endpoint e credencial do gateway remoto | obrigatórios e secretos em produção |
 | `STORAGE_DRIVER` | adapter de arquivos de perfil | `local` em desenvolvimento; obrigatoriamente `s3` em produção |
 | `PROFILE_STORAGE_ROOT` | diretório privado do adapter local | fora da árvore pública e com dados fictícios |
-| `S3_*` | endpoint, bucket, região e credenciais S3/R2 | obrigatórios e secretos quando o driver for `s3` |
+| `FILE_SCAN_DRIVER` | inspeção antimalware | `disabled` somente local/teste; obrigatoriamente `clamav` em produção |
+| `CLAMAV_*` | daemon, porta e timeout de inspeção | rede privada, assinaturas atualizadas e acesso somente pela API |
+| `RATE_LIMIT_CLEANUP_INTERVAL_SECONDS` | manutenção de buckets expirados | job periódico; nunca executar limpeza no caminho da requisição |
+| `S3_*` | endpoint, bucket, credenciais, timeout, retry e circuito | obrigatórios e secretos quando o driver for `s3` |
+| `RETENTION_JOB_*` | frequência, lote e teto de snapshots por ciclo | intervalo máximo diário; calibrar após medir a fila |
+| `RETENTION_ALERT_AGE_SECONDS` | SLA do vencido mais antigo | alerta inicial de 24 horas |
 | `SEED_ADMIN_*` | bootstrap local de admin | ausente em produção |
 | `NEXT_PUBLIC_API_BASE_URL` | endereço usado pelo navegador | `/api` em produção; não pode conter segredo |
 
@@ -59,7 +65,7 @@ segredos em variáveis `NEXT_PUBLIC_*`, logs, tickets ou screenshots.
 O bootstrap recusa produção quando Web e CORS não usam a mesma origem HTTPS, o path do refresh não
 é `/api/auth`, Swagger está habilitado, segredo JWT, CORS ou credenciais de banco ainda usam os
 valores locais da `.env.example`, o provider remoto de e-mail não está completo, o storage local
-está selecionado ou faltam parâmetros S3/R2.
+está selecionado, faltam parâmetros S3/R2 ou o ClamAV não está configurado.
 
 ## Ordem de promoção
 
@@ -89,8 +95,16 @@ uma entrega posterior.
 - endpoint administrativo rejeita atores sem papel admin;
 - logs não contêm senha, access token, refresh token ou token de verificação;
 - upload de teste autorizado é privado, e um papel sem acesso recebe `403`;
-- bucket de arquivos bloqueia acesso público e aplica criptografia e retenção definidas pelo ambiente;
+- arquivo EICAR de staging é rejeitado sem objeto aprovado nem conteúdo no log;
+- bucket bloqueia acesso público, usa criptografia, credencial sem administração e lifecycle que
+  remove quarentena órfã depois da janela operacional;
+- logs mostram conclusão do ciclo de retenção e alertam quando o vencido mais antigo excede o SLA;
 - `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` não existem em produção.
+
+O proxy deve limitar `/api/profiles/files` a 6 MiB e o daemon ClamAV não deve ser exposto à
+internet. A credencial S3 da aplicação acessa somente os prefixos necessários e não altera policy,
+ACL, lifecycle ou configuração do bucket. Monitore latência/falha de scan, abertura do circuito,
+`429`, cardinalidade de buckets e idade do snapshot vencido mais antigo.
 
 HSTS deve ser aplicado no proxy público somente após confirmar HTTPS em todos os subdomínios
 incluídos pela política. CSP começa em `Content-Security-Policy-Report-Only`; as violações legítimas

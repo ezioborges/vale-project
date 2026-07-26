@@ -8,6 +8,7 @@ import { CurrentUser } from '../common/auth/current-user.decorator';
 import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Roles } from '../common/auth/roles.decorator';
 import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import { CreateReportDto, MyReportsQueryDto } from './dto/report.dto';
 import { ReportsService } from './reports.service';
 
@@ -21,6 +22,22 @@ export class ReportsController {
 
   @Post()
   @Roles('candidate', 'employer', 'coordinator', 'admin')
+  @RateLimit({
+    name: 'reports:create',
+    buckets: [
+      { name: 'user', identities: ['user'], limit: 10, windowSeconds: 3600 },
+      {
+        name: 'target',
+        identities: [
+          'user',
+          { body: 'targetType', normalize: 'lowercase' },
+          { body: 'targetId', normalize: 'lowercase' },
+        ],
+        limit: 3,
+        windowSeconds: 86_400,
+      },
+    ],
+  })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateReportDto,

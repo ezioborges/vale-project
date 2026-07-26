@@ -118,9 +118,7 @@ describe('session boundary security', () => {
       .fn()
       .mockResolvedValueOnce({
         authVersion: 2,
-        role: 'candidate',
         sid: 'session-id',
-        status: 'active',
         sub: 'user-id',
       })
       .mockRejectedValueOnce(new Error('expired'));

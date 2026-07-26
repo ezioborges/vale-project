@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createReport,
   getApiHealth,
+  getCurrentUser,
   getMyProfile,
   listAuditEvents,
   loginUser,
@@ -32,9 +33,10 @@ describe('getApiHealth', () => {
       status: 503,
     });
 
-    await expect(getApiHealth(fetcher)).rejects.toThrow(
-      'API health check failed with status 503',
-    );
+    await expect(getApiHealth(fetcher)).rejects.toMatchObject({
+      code: 'SERVER_ERROR',
+      status: 503,
+    });
   });
 
   it('accepts cookie-only authentication responses without an access token', async () => {
@@ -151,9 +153,9 @@ describe('getApiHealth', () => {
       }),
     );
     const profileRequest = fetcher.mock.calls[1]?.[1];
-    expect(
-      (profileRequest?.headers as Record<string, string>)['X-CSRF-Token'],
-    ).toContain('test-csrf-token');
+    expect(new Headers(profileRequest?.headers).get('X-CSRF-Token')).toContain(
+      'test-csrf-token',
+    );
   });
 
   it('validates a report before sending sensitive text', async () => {
@@ -206,4 +208,106 @@ describe('getApiHealth', () => {
       expect.objectContaining({ credentials: 'include' }),
     );
   });
+
+  it('uses a single refresh for simultaneous authenticated requests', async () => {
+    let protectedCalls = 0;
+    let refreshCalls = 0;
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/users/me')) {
+        protectedCalls += 1;
+        return protectedCalls <= 2
+          ? jsonResponse({ message: 'expired' }, 401)
+          : jsonResponse(currentUser());
+      }
+      if (url.endsWith('/auth/csrf')) {
+        return jsonResponse({
+          csrfToken:
+            'single-flight-csrf-token-with-at-least-thirty-two-characters',
+        });
+      }
+      if (url.endsWith('/auth/refresh')) {
+        refreshCalls += 1;
+        return jsonResponse({
+          expiresInSeconds: 900,
+          user: currentUser(),
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as unknown as typeof fetch;
+
+    const [first, second] = await Promise.all([
+      getCurrentUser(fetcher),
+      getCurrentUser(fetcher),
+    ]);
+
+    expect(first.id).toBe(currentUser().id);
+    expect(second.id).toBe(currentUser().id);
+    expect(refreshCalls).toBe(1);
+    expect(protectedCalls).toBe(4);
+  });
+
+  it('repeats an authenticated request no more than once', async () => {
+    let protectedCalls = 0;
+    let refreshCalls = 0;
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/users/me')) {
+        protectedCalls += 1;
+        return jsonResponse({ message: 'expired' }, 401);
+      }
+      if (url.endsWith('/auth/csrf')) {
+        return jsonResponse({
+          csrfToken:
+            'retry-once-csrf-token-with-at-least-thirty-two-characters',
+        });
+      }
+      if (url.endsWith('/auth/refresh')) {
+        refreshCalls += 1;
+        return jsonResponse({
+          expiresInSeconds: 900,
+          user: currentUser(),
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as unknown as typeof fetch;
+
+    await expect(getCurrentUser(fetcher)).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      status: 401,
+    });
+    expect(protectedCalls).toBe(2);
+    expect(refreshCalls).toBe(1);
+  });
+
+  it('does not refresh a forbidden request and exposes a stable code', async () => {
+    const fetcher = vi.fn(async () =>
+      jsonResponse({ message: 'action required' }, 403),
+    ) as unknown as typeof fetch;
+
+    await expect(getCurrentUser(fetcher)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+      status: 403,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });
+
+function currentUser() {
+  return {
+    id: '9d468807-fd6d-4be7-b16d-c067f17c0501',
+    displayName: 'Pessoa Candidata',
+    email: 'candidate@example.com',
+    role: 'candidate' as const,
+    status: 'active' as const,
+    emailVerifiedAt: new Date().toISOString(),
+    initialPath: '/app/candidato',
+  };
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+    status,
+  });
+}

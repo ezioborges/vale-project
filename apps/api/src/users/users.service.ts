@@ -103,6 +103,14 @@ export class UsersService {
     });
   }
 
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email: email.trim().toLowerCase() })
+      .getOne();
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
   }

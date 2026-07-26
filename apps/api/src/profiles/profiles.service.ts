@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
 import {
@@ -7,12 +6,15 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type {
   CandidateProfile as CandidateProfileResponse,
   CandidateProfileInput,
+  CandidateTeamProfile,
+  CandidateThirdPartyProfile,
   EmployerProfile as EmployerProfileResponse,
   ProfileAsset as ProfileAssetResponse,
   ProfileAssetKind,
@@ -22,6 +24,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
+import { RateLimitService } from '../common/rate-limit/rate-limit.service';
 import { Application } from '../jobs/application.entity';
 import { User } from '../users/user.entity';
 import { CandidateProfile } from './candidate-profile.entity';
@@ -30,6 +33,7 @@ import { UpdateEmployerProfileDto } from './dto/update-employer-profile.dto';
 import { EmployerProfile } from './employer-profile.entity';
 import { FILE_STORAGE, FileStorage } from './file-storage';
 import { ProfileAsset } from './profile-asset.entity';
+import { FileSafetyError, ProfileFilePipeline } from './profile-file.pipeline';
 
 export type ProfileChangeContext = {
   ipAddress?: string | null;
@@ -62,6 +66,8 @@ export class ProfilesService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
+    private readonly filePipeline: ProfileFilePipeline,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   async getMyProfile(
@@ -292,14 +298,18 @@ export class ProfilesService {
   async getCandidateForViewer(
     profileId: string,
     viewer: AuthenticatedUser,
-  ): Promise<CandidateProfileResponse> {
+  ): Promise<
+    CandidateProfileResponse | CandidateTeamProfile | CandidateThirdPartyProfile
+  > {
     const profile = await this.candidateRepository.findOneBy({ id: profileId });
     if (!profile) {
       throw new NotFoundException('Candidate profile not found.');
     }
 
-    await this.assertCandidateAccess(profile, viewer);
-    return this.toCandidateResponse(profile);
+    const audience = await this.assertCandidateAccess(profile, viewer);
+    if (audience === 'owner') return this.toCandidateResponse(profile);
+    if (audience === 'team') return this.toCandidateTeamResponse(profile);
+    return this.toCandidateThirdPartyResponse(profile);
   }
 
   async uploadAsset(
@@ -314,10 +324,38 @@ export class ProfilesService {
     }
     await this.assertProfileExists(user);
 
-    const validated = this.validateFile(kind, file);
-    const storageKey =
-      `${user.id}/${kind}/${randomUUID()}` + validated.extension;
-    await this.storage.put(storageKey, file.buffer, validated.mimeType);
+    let safeFile;
+    try {
+      safeFile = await this.filePipeline.inspectAndPromote({
+        userId: user.id,
+        kind,
+        originalName: file.originalname,
+        declaredMimeType: file.mimetype,
+        content: file.buffer,
+      });
+    } catch (error) {
+      if (error instanceof FileSafetyError) {
+        if (error.stage === 'scan') {
+          await this.auditService.record({
+            actorUserId: user.id,
+            targetUserId: user.id,
+            action: 'profile_asset.scan_failed',
+            context: { kind, reason: error.reason },
+            ipAddress: context.ipAddress,
+            userAgent: context.userAgent,
+          });
+        }
+        if (error.reason === 'scanner_unavailable') {
+          throw new ServiceUnavailableException(
+            'File inspection is temporarily unavailable.',
+          );
+        }
+        throw new UnsupportedMediaTypeException(
+          'File failed security inspection.',
+        );
+      }
+      throw error;
+    }
 
     let previousStorageKey: string | null = null;
     let saved: ProfileAsset;
@@ -332,9 +370,9 @@ export class ProfilesService {
         previousStorageKey = asset?.storageKey ?? null;
         asset ??= repository.create({ userId: user.id, kind });
         asset.originalName = this.safeFileName(file.originalname);
-        asset.mimeType = validated.mimeType;
-        asset.sizeBytes = file.size;
-        asset.storageKey = storageKey;
+        asset.mimeType = safeFile.mimeType;
+        asset.sizeBytes = safeFile.sizeBytes;
+        asset.storageKey = safeFile.storageKey;
         const result = await repository.save(asset);
 
         await this.recordProfileAudit(
@@ -343,15 +381,15 @@ export class ProfilesService {
           'profile_asset.replaced',
           {
             kind,
-            mimeType: validated.mimeType,
-            sizeBytes: file.size,
+            mimeType: safeFile.mimeType,
+            sizeBytes: safeFile.sizeBytes,
           },
           context,
         );
         return result;
       });
     } catch (error) {
-      await this.storage.delete(storageKey).catch(() => undefined);
+      await this.storage.delete(safeFile.storageKey).catch(() => undefined);
       throw error;
     }
 
@@ -365,6 +403,7 @@ export class ProfilesService {
   async downloadAsset(
     assetId: string,
     viewer: AuthenticatedUser,
+    context: ProfileChangeContext,
   ): Promise<ProfileFileDownload> {
     const asset = await this.assetRepository.findOneBy({ id: assetId });
     if (!asset) {
@@ -394,6 +433,23 @@ export class ProfilesService {
       }
     }
 
+    if (asset.kind === 'resume') {
+      await this.rateLimitService.enforce({
+        identity: `user:${viewer.id}:purpose:profile-resume`,
+        policyName: 'profiles:download:volume',
+        limit: 250,
+        windowSeconds: 86_400,
+        cost: Math.max(1, Math.ceil(asset.sizeBytes / 1024 / 1024)),
+      });
+      await this.auditService.record({
+        actorUserId: viewer.id,
+        targetUserId: asset.userId,
+        action: 'profile_asset.downloaded',
+        context: { kind: asset.kind },
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+    }
     const content = await this.storage.get(asset.storageKey);
     return {
       content,
@@ -432,14 +488,9 @@ export class ProfilesService {
   private async assertCandidateAccess(
     profile: CandidateProfile,
     viewer: AuthenticatedUser,
-  ): Promise<void> {
-    if (
-      viewer.id === profile.userId ||
-      viewer.role === 'admin' ||
-      viewer.role === 'coordinator'
-    ) {
-      return;
-    }
+  ): Promise<'owner' | 'team' | 'third'> {
+    if (viewer.id === profile.userId) return 'owner';
+    if (viewer.role === 'admin' || viewer.role === 'coordinator') return 'team';
 
     if (!profile.isActive || viewer.role !== 'employer') {
       throw new ForbiddenException('Candidate profile is not available.');
@@ -458,7 +509,7 @@ export class ProfilesService {
           cancelled: 'cancelled',
         })
         .getExists();
-      if (hasApplicationAccess) return;
+      if (hasApplicationAccess) return 'third';
       throw new ForbiddenException(
         'Candidate data is available only through an application.',
       );
@@ -473,6 +524,7 @@ export class ProfilesService {
     if (!employer?.isVerified) {
       throw new ForbiddenException('A verified employer profile is required.');
     }
+    return 'third';
   }
 
   private async assertProfileExists(user: AuthenticatedUser): Promise<void> {
@@ -497,55 +549,6 @@ export class ProfilesService {
         'This file kind is not allowed for the account role.',
       );
     }
-  }
-
-  private validateFile(
-    kind: ProfileAssetKind,
-    file: UploadedProfileFile,
-  ): { extension: string; mimeType: string } {
-    const imageSignatures: Record<string, (buffer: Buffer) => boolean> = {
-      'image/jpeg': (buffer) =>
-        buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff,
-      'image/png': (buffer) =>
-        buffer
-          .subarray(0, 8)
-          .equals(
-            Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-          ),
-      'image/webp': (buffer) =>
-        buffer.subarray(0, 4).toString() === 'RIFF' &&
-        buffer.subarray(8, 12).toString() === 'WEBP',
-    };
-    const extensions: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp',
-      'application/pdf': '.pdf',
-    };
-    const limit = kind === 'resume' ? 5 * 1024 * 1024 : 2 * 1024 * 1024;
-    if (file.size > limit) {
-      throw new BadRequestException(
-        `File exceeds the ${limit / 1024 / 1024} MB limit.`,
-      );
-    }
-
-    const isValid =
-      kind === 'resume'
-        ? file.mimetype === 'application/pdf' &&
-          file.buffer.subarray(0, 5).toString() === '%PDF-'
-        : Boolean(imageSignatures[file.mimetype]?.(file.buffer));
-    if (!isValid) {
-      throw new UnsupportedMediaTypeException(
-        kind === 'resume'
-          ? 'Resume must be a valid PDF file.'
-          : 'Image must be a valid JPEG, PNG or WebP file.',
-      );
-    }
-
-    return {
-      extension: extensions[file.mimetype]!,
-      mimeType: file.mimetype,
-    };
   }
 
   private applyCandidateInput(
@@ -696,9 +699,59 @@ export class ProfilesService {
     const avatar = assets.find((asset) => asset.kind === 'avatar');
     const resume = assets.find((asset) => asset.kind === 'resume');
     return {
+      ...this.candidateContent(profile),
       id: profile.id,
       kind: 'candidate',
       userId: profile.userId,
+      visibility: profile.visibility,
+      isActive: profile.isActive,
+      completionPercentage: this.candidateCompletion(profile, Boolean(resume)),
+      avatar: avatar ? this.toAssetResponse(avatar) : null,
+      resume: resume ? this.toAssetResponse(resume) : null,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    };
+  }
+
+  private async toCandidateTeamResponse(
+    profile: CandidateProfile,
+  ): Promise<CandidateTeamProfile> {
+    const assets = await this.assetRepository.findBy({
+      userId: profile.userId,
+    });
+    const avatar = assets.find((asset) => asset.kind === 'avatar');
+    const resume = assets.find((asset) => asset.kind === 'resume');
+    return {
+      ...this.candidateContent(profile),
+      id: profile.id,
+      kind: 'candidate',
+      userId: profile.userId,
+      visibility: profile.visibility,
+      isActive: profile.isActive,
+      avatar: avatar ? this.toAssetResponse(avatar) : null,
+      resume: resume ? this.toAssetResponse(resume) : null,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    };
+  }
+
+  private async toCandidateThirdPartyResponse(
+    profile: CandidateProfile,
+  ): Promise<CandidateThirdPartyProfile> {
+    const avatar = await this.assetRepository.findOneBy({
+      userId: profile.userId,
+      kind: 'avatar',
+    });
+    return {
+      ...this.candidateContent(profile),
+      id: profile.id,
+      kind: 'candidate',
+      avatar: avatar ? { downloadPath: `/profiles/files/${avatar.id}` } : null,
+    };
+  }
+
+  private candidateContent(profile: CandidateProfile): CandidateProfileInput {
+    return {
       displayName: profile.displayName,
       pronouns: profile.pronouns,
       headline: profile.headline,
@@ -709,13 +762,6 @@ export class ProfilesService {
       experiences: profile.experiences,
       education: profile.education,
       professionalLinks: profile.professionalLinks,
-      visibility: profile.visibility,
-      isActive: profile.isActive,
-      completionPercentage: this.candidateCompletion(profile, Boolean(resume)),
-      avatar: avatar ? this.toAssetResponse(avatar) : null,
-      resume: resume ? this.toAssetResponse(resume) : null,
-      createdAt: profile.createdAt.toISOString(),
-      updatedAt: profile.updatedAt.toISOString(),
     };
   }
 

@@ -2,6 +2,7 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 
+import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../email/email.service';
 import { TermsService } from '../terms/terms.service';
 import { User } from '../users/user.entity';
@@ -56,6 +57,7 @@ describe('AuthService', () => {
   const usersService = {
     createPublicUser: jest.fn(async () => testUser),
     findByEmail: jest.fn(),
+    findByEmailWithPassword: jest.fn(),
     findById: jest.fn(),
     toResponse: jest.fn((user: User) => ({
       id: user.id,
@@ -75,6 +77,9 @@ describe('AuthService', () => {
     sendEmailVerification: jest.fn(),
     sendPasswordReset: jest.fn(),
   } as unknown as EmailService;
+  const auditService = {
+    record: jest.fn(),
+  } as unknown as AuditService;
 
   const createRepository = () => ({
     create: jest.fn((input: object) => input),
@@ -103,6 +108,7 @@ describe('AuthService', () => {
       refreshRepository as never,
       emailRepository as never,
       passwordRepository as never,
+      auditService,
     );
   });
 
@@ -138,6 +144,13 @@ describe('AuthService', () => {
       expect.objectContaining({ email: testUser.email }),
     );
     expect(response).not.toHaveProperty('devEmailVerificationToken');
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'auth.registration_succeeded',
+        context: { outcome: 'success' },
+      }),
+      undefined,
+    );
     expect(refreshRepository.save).toHaveBeenCalledTimes(1);
     expect(jwtService.signAsync).toHaveBeenCalledWith(
       expect.not.objectContaining({ email: expect.anything() }),
@@ -158,7 +171,7 @@ describe('AuthService', () => {
 
   it('rejects invalid login and accepts a valid password', async () => {
     const passwordHash = await argon2.hash('correct-password');
-    jest.mocked(usersService.findByEmail).mockResolvedValue({
+    jest.mocked(usersService.findByEmailWithPassword).mockResolvedValue({
       ...testUser,
       passwordHash,
     } as User);
@@ -177,6 +190,31 @@ describe('AuthService', () => {
 
     expect(response.accessToken).toBe('access-token');
     expect(refreshRepository.save).toHaveBeenCalledTimes(1);
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'auth.login_succeeded' }),
+      undefined,
+    );
+  });
+
+  it('keeps invalid-credential responses generic when audit storage fails', async () => {
+    const passwordHash = await argon2.hash('correct-password');
+    jest.mocked(usersService.findByEmailWithPassword).mockResolvedValue({
+      ...testUser,
+      passwordHash,
+    } as User);
+    jest
+      .mocked(auditService.record)
+      .mockRejectedValueOnce(new Error('audit unavailable'));
+
+    await expect(
+      service.login(
+        { email: testUser.email, password: 'incorrect-password' },
+        {},
+      ),
+    ).rejects.toMatchObject({
+      message: 'Invalid email or password.',
+      status: 401,
+    });
   });
 
   it('does not reveal whether a password-reset account exists', async () => {

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -12,6 +14,7 @@ import { CreateIdentityTables1710000001000 } from '../database/migrations/171000
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
 import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
 import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
+import { HardenAbuseUploadsRetention1710000006000 } from '../database/migrations/1710000006000-HardenAbuseUploadsRetention';
 import { InitializeDatabase1710000000000 } from '../database/migrations/1710000000000-InitializeDatabase';
 import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { ApplicationResumeSnapshot } from '../jobs/application-resume-snapshot.entity';
@@ -19,6 +22,7 @@ import { ApplicationRetentionService } from '../jobs/application-retention.servi
 import { enableCsrfForAgent } from './csrf-test.helper';
 import { Application } from '../jobs/application.entity';
 import { Job } from '../jobs/job.entity';
+import { FILE_STORAGE, FileStorage } from '../profiles/file-storage';
 import { User } from '../users/user.entity';
 
 const integrationDescribe =
@@ -51,12 +55,14 @@ integrationDescribe('Phase 3 jobs, moderation and applications', () => {
 
   const emailSender = new RecordingEmailSender();
   let app: NestExpressApplication;
+  let dataSource: DataSource;
   let users: Repository<User>;
   let jobs: Repository<Job>;
   let applications: Repository<Application>;
   let snapshots: Repository<ApplicationResumeSnapshot>;
   let retention: ApplicationRetentionService;
   let audits: Repository<AuditEvent>;
+  let storage: FileStorage;
   let candidateAgent: TestAgent;
   let employerAgent: TestAgent;
   let otherEmployerAgent: TestAgent;
@@ -79,13 +85,14 @@ integrationDescribe('Phase 3 jobs, moderation and applications', () => {
     configureHttpApp(app, moduleRef.get(ConfigService<Env, true>));
     await app.init();
 
-    const dataSource = app.get(DataSource);
+    dataSource = app.get(DataSource);
     users = dataSource.getRepository(User);
     jobs = dataSource.getRepository(Job);
     applications = dataSource.getRepository(Application);
     snapshots = dataSource.getRepository(ApplicationResumeSnapshot);
     retention = app.get(ApplicationRetentionService);
     audits = dataSource.getRepository(AuditEvent);
+    storage = app.get<FileStorage>(FILE_STORAGE);
 
     candidateAgent = request.agent(app.getHttpServer());
     employerAgent = request.agent(app.getHttpServer());
@@ -345,11 +352,102 @@ integrationDescribe('Phase 3 jobs, moderation and applications', () => {
     ).toBe(200);
 
     await snapshots.update({ applicationId }, { retentionUntil: new Date(0) });
-    await expect(retention.purgeExpired()).resolves.toBe(1);
+    const competingRunner = dataSource.createQueryRunner();
+    await competingRunner.connect();
+    await competingRunner.query('SELECT pg_advisory_lock($1)', [73_019_301]);
+    const skipped = await retention.runCycle();
+    expect(skipped).toMatchObject({ acquiredLock: false, removed: 0 });
+    await competingRunner.query('SELECT pg_advisory_unlock($1)', [73_019_301]);
+    await competingRunner.release();
+
+    const metrics = await retention.runCycle();
+    expect(metrics).toMatchObject({
+      acquiredLock: true,
+      expired: 1,
+      failed: 0,
+      hasMore: false,
+      removed: 1,
+    });
+    expect(retention.getLastRunMetrics()).toEqual(metrics);
     expect(
       (await candidateAgent.get(`/applications/${applicationId}/resume`))
         .status,
     ).toBe(404);
+  });
+
+  it('purges rejected applications and submitted applications from closed jobs', async () => {
+    const sourceJob = await jobs.findOneByOrFail({ id: jobId });
+    const sourceApplication = await applications.findOneByOrFail({
+      id: applicationId,
+    });
+    const rejectedJob = await jobs.save(
+      jobs.create({
+        ...sourceJob,
+        id: undefined,
+        title: 'Vaga encerrada com candidatura rejeitada',
+        status: 'closed',
+        closedAt: new Date(),
+      }),
+    );
+    const closedJob = await jobs.save(
+      jobs.create({
+        ...sourceJob,
+        id: undefined,
+        title: 'Vaga encerrada com candidatura submetida',
+        status: 'closed',
+        closedAt: new Date(),
+      }),
+    );
+    const rejectedApplication = await applications.save(
+      applications.create({
+        jobId: rejectedJob.id,
+        candidateProfileId: sourceApplication.candidateProfileId,
+        coverMessage: null,
+        status: 'rejected',
+      }),
+    );
+    const closedApplication = await applications.save(
+      applications.create({
+        jobId: closedJob.id,
+        candidateProfileId: sourceApplication.candidateProfileId,
+        coverMessage: null,
+        status: 'submitted',
+      }),
+    );
+    const fixtures = [
+      {
+        applicationId: rejectedApplication.id,
+        key: `applications/${sourceApplication.candidateProfileId}/${randomUUID()}.pdf`,
+      },
+      {
+        applicationId: closedApplication.id,
+        key: `applications/${sourceApplication.candidateProfileId}/${randomUUID()}.pdf`,
+      },
+    ];
+    for (const fixture of fixtures) {
+      const content = Buffer.from('%PDF-1.4\nretention fixture\n%%EOF');
+      await storage.put(fixture.key, content, 'application/pdf');
+      await snapshots.save(
+        snapshots.create({
+          applicationId: fixture.applicationId,
+          originalName: 'retention-fixture.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: content.length,
+          storageKey: fixture.key,
+          retentionUntil: new Date(0),
+        }),
+      );
+    }
+
+    const metrics = await retention.runCycle();
+
+    expect(metrics).toMatchObject({
+      expired: 2,
+      failed: 0,
+      hasMore: false,
+      removed: 2,
+    });
+    expect(await snapshots.count()).toBe(0);
   });
 
   it('reapplies moderation on edits and rejects concurrent decisions', async () => {
@@ -451,6 +549,7 @@ async function resetTestDatabase(): Promise<void> {
       CompletePhaseOne1710000002000,
       CreateProfilesAndPrivacy1710000003000,
       CreateJobsAndApplications1710000004000,
+      HardenAbuseUploadsRetention1710000006000,
     ],
   });
 

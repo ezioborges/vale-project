@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuditModule } from '../audit/audit.module';
 import { Env } from '../common/config/env.validation';
 import { CsrfService } from '../common/auth/csrf.service';
 import { EmailModule } from '../email/email.module';
@@ -17,6 +18,7 @@ import { RefreshToken } from './refresh-token.entity';
 @Module({
   imports: [
     ConfigModule,
+    AuditModule,
     UsersModule,
     TermsModule,
     EmailModule,

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -11,6 +12,7 @@ import * as argon2 from 'argon2';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 
+import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../common/auth/authenticated-user';
 import { Env } from '../common/config/env.validation';
 import { EmailService } from '../email/email.service';
@@ -58,6 +60,7 @@ export class AuthService {
     private readonly emailTokenRepository: Repository<EmailVerificationToken>,
     @InjectRepository(PasswordResetToken)
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
+    private readonly auditService: AuditService,
   ) {}
 
   async register(
@@ -101,6 +104,12 @@ export class AuthService {
       );
     }
     const tokens = await this.issueTokens(user, metadata.ipAddress);
+    await this.recordAuthEventSafely(
+      user.id,
+      'auth.registration_succeeded',
+      { outcome: 'success' },
+      metadata,
+    );
 
     return {
       ...tokens,
@@ -112,18 +121,38 @@ export class AuthService {
     input: LoginDto,
     metadata: RequestMetadata,
   ): Promise<SessionResult> {
-    const user = await this.usersService.findByEmail(input.email);
+    const user = await this.usersService.findByEmailWithPassword(input.email);
 
     if (!user || !(await argon2.verify(user.passwordHash, input.password))) {
+      if (user) {
+        await this.recordAuthEventSafely(
+          user.id,
+          'auth.login_failed',
+          { outcome: 'failure', reason: 'invalid_credentials' },
+          metadata,
+        );
+      }
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     if (user.status === 'suspended' || user.status === 'disabled') {
+      await this.recordAuthEventSafely(
+        user.id,
+        'auth.login_failed',
+        { outcome: 'failure', reason: 'account_unavailable' },
+        metadata,
+      );
       throw new UnauthorizedException('User account cannot login.');
     }
 
     await this.usersService.updateLastLogin(user.id);
     const tokens = await this.issueTokens(user, metadata.ipAddress);
+    await this.recordAuthEventSafely(
+      user.id,
+      'auth.login_succeeded',
+      { outcome: 'success' },
+      metadata,
+    );
 
     return {
       ...tokens,
@@ -153,6 +182,13 @@ export class AuthService {
           existing.familyId,
           metadata.ipAddress,
         );
+        await this.recordAuthEvent(
+          existing.userId,
+          'auth.refresh_failed',
+          { outcome: 'failure', reason: 'reuse_detected' },
+          metadata,
+          manager,
+        );
         return { kind: 'reused' } as const;
       }
 
@@ -160,6 +196,13 @@ export class AuthService {
         existing.revokedAt = new Date();
         existing.revokedByIp = metadata.ipAddress ?? null;
         await repository.save(existing);
+        await this.recordAuthEvent(
+          existing.userId,
+          'auth.refresh_failed',
+          { outcome: 'failure', reason: 'expired' },
+          metadata,
+          manager,
+        );
         return { kind: 'invalid' } as const;
       }
 
@@ -177,6 +220,13 @@ export class AuthService {
           existing.familyId,
           metadata.ipAddress,
         );
+        await this.recordAuthEvent(
+          user.id,
+          'auth.refresh_failed',
+          { outcome: 'failure', reason: 'account_unavailable' },
+          metadata,
+          manager,
+        );
         return { kind: 'blocked' } as const;
       }
 
@@ -193,6 +243,13 @@ export class AuthService {
       existing.revokedByIp = metadata.ipAddress ?? null;
       existing.replacedByTokenId = successor.id;
       await repository.save(existing);
+      await this.recordAuthEvent(
+        user.id,
+        'auth.refresh_succeeded',
+        { outcome: 'success' },
+        metadata,
+        manager,
+      );
 
       return {
         kind: 'success',
@@ -210,7 +267,7 @@ export class AuthService {
     }
 
     if (outcome.kind === 'blocked') {
-      throw new UnauthorizedException('User account cannot refresh tokens.');
+      throw new ForbiddenException('User account cannot refresh tokens.');
     }
 
     if (outcome.kind === 'invalid') {
@@ -240,6 +297,12 @@ export class AuthService {
     token.revokedAt = new Date();
     token.revokedByIp = ipAddress ?? null;
     await this.refreshTokenRepository.save(token);
+    await this.recordAuthEventSafely(
+      token.userId,
+      'auth.logout',
+      { outcome: 'success' },
+      { ipAddress },
+    );
   }
 
   async requestEmailVerification(userId: string): Promise<{ message: string }> {
@@ -296,7 +359,15 @@ export class AuthService {
         target.status = 'active';
       }
 
-      return userRepository.save(target);
+      const saved = await userRepository.save(target);
+      await this.recordAuthEvent(
+        target.id,
+        'auth.email_verified',
+        { outcome: 'success' },
+        {},
+        manager,
+      );
+      return saved;
     });
     return this.usersService.toResponse(user);
   }
@@ -358,6 +429,13 @@ export class AuthService {
           revokedByIp: metadata.ipAddress ?? null,
         },
       );
+      await this.recordAuthEvent(
+        token.userId,
+        'auth.password_reset',
+        { outcome: 'success', reason: 'credential_changed' },
+        metadata,
+        manager,
+      );
     });
 
     return {
@@ -411,8 +489,6 @@ export class AuthService {
     });
     const payload: JwtPayload = {
       sub: user.id,
-      role: user.role,
-      status: user.status,
       authVersion: user.authVersion,
       sid: sessionId,
     };
@@ -482,6 +558,51 @@ export class AuthService {
         revokedByIp: ipAddress ?? null,
       },
     );
+  }
+
+  private recordAuthEvent(
+    userId: string,
+    action:
+      | 'auth.registration_succeeded'
+      | 'auth.login_succeeded'
+      | 'auth.login_failed'
+      | 'auth.refresh_succeeded'
+      | 'auth.refresh_failed'
+      | 'auth.logout'
+      | 'auth.email_verified'
+      | 'auth.password_reset',
+    context: Record<string, unknown>,
+    metadata: RequestMetadata,
+    manager?: EntityManager,
+  ) {
+    return this.auditService.record(
+      {
+        actorUserId: userId,
+        targetUserId: userId,
+        action,
+        context,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+      },
+      manager,
+    );
+  }
+
+  private async recordAuthEventSafely(
+    userId: string,
+    action:
+      | 'auth.registration_succeeded'
+      | 'auth.login_succeeded'
+      | 'auth.login_failed'
+      | 'auth.logout',
+    context: Record<string, unknown>,
+    metadata: RequestMetadata,
+  ): Promise<void> {
+    try {
+      await this.recordAuthEvent(userId, action, context, metadata);
+    } catch {
+      this.logger.error('Authentication audit recording failed.');
+    }
   }
 
   private getCurrentLegalDocuments() {

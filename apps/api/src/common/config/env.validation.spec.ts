@@ -51,6 +51,20 @@ describe('production environment validation', () => {
     ).toBe(true);
   });
 
+  it('requires an available malware scanner in production', () => {
+    const disabled = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      FILE_SCAN_DRIVER: 'disabled',
+    });
+    const incomplete = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      CLAMAV_HOST: undefined,
+    });
+
+    expect(disabled.success).toBe(false);
+    expect(incomplete.success).toBe(false);
+  });
+
   it('accepts non-local production credentials with remote providers', () => {
     expect(envSchema.safeParse(validProductionEnvironment()).success).toBe(
       true,
@@ -100,5 +114,7 @@ function validProductionEnvironment() {
     S3_REGION: 'auto',
     S3_ACCESS_KEY_ID: 'storage-access-key',
     S3_SECRET_ACCESS_KEY: 'storage-secret-key',
+    FILE_SCAN_DRIVER: 'clamav',
+    CLAMAV_HOST: 'clamav.internal.vale.example',
   };
 }

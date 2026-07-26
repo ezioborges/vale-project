@@ -24,6 +24,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type {
   CandidateProfile,
+  CandidateTeamProfile,
+  CandidateThirdPartyProfile,
   EmployerProfile,
   ProfileAsset,
 } from '@vale/shared';
@@ -34,6 +36,7 @@ import { CurrentUser } from '../common/auth/current-user.decorator';
 import { RequireEmailVerified } from '../common/auth/email-verified.decorator';
 import { Roles } from '../common/auth/roles.decorator';
 import { RequireAcceptedTerms } from '../common/auth/terms.decorator';
+import { RateLimit } from '../common/rate-limit/rate-limit.decorator';
 import {
   UpdateProfileActivationDto,
   UpdateProfileVisibilityDto,
@@ -127,12 +130,32 @@ export class ProfilesController {
   getCandidate(
     @Param('id') id: string,
     @CurrentUser() viewer: AuthenticatedUser,
-  ): Promise<CandidateProfile> {
+  ): Promise<
+    CandidateProfile | CandidateTeamProfile | CandidateThirdPartyProfile
+  > {
     return this.profilesService.getCandidateForViewer(id, viewer);
   }
 
   @Post('files')
   @Roles('candidate', 'employer')
+  @RateLimit({
+    name: 'profiles:upload',
+    buckets: [
+      {
+        name: 'requests',
+        identities: ['user', { static: 'profile-file' }],
+        limit: 20,
+        windowSeconds: 3600,
+      },
+      {
+        name: 'volume',
+        identities: ['user', { static: 'profile-file-bytes' }],
+        limit: 25,
+        windowSeconds: 3600,
+        cost: 'contentLengthMiB',
+      },
+    ],
+  })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 5 * 1024 * 1024, files: 1 },
@@ -155,12 +178,28 @@ export class ProfilesController {
   }
 
   @Get('files/:id')
+  @RateLimit({
+    name: 'profiles:download',
+    buckets: [
+      {
+        name: 'user-purpose',
+        identities: ['user', { static: 'profile-file' }],
+        limit: 120,
+        windowSeconds: 3600,
+      },
+    ],
+  })
   async downloadFile(
     @Param('id') id: string,
     @CurrentUser() viewer: AuthenticatedUser,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
-    const file = await this.profilesService.downloadAsset(id, viewer);
+    const file = await this.profilesService.downloadAsset(
+      id,
+      viewer,
+      this.requestContext(request),
+    );
     response.set({
       'Cache-Control': 'private, no-store',
       'Content-Disposition': `attachment; filename="${this.asciiFileName(

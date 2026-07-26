@@ -182,6 +182,8 @@ Marco: uma suíte de integração comprova cookies, CSRF, CORS, headers, JWT e e
 
 Objetivo: fazer a sessão de 30 dias se comportar como planejado sem ampliar a exposição de dados.
 
+Execução versionada: [`16-execucao-etapa-2.md`](16-execucao-etapa-2.md).
+
 ### Cliente HTTP único
 
 Criar uma única função de transporte para todas as chamadas autenticadas:
@@ -221,6 +223,8 @@ Marco: testes de contrato negativos comprovam que cada papel recebe apenas os ca
 ## Etapa 3 — abuso, uploads e retenção
 
 Objetivo: controlar custo, spam e conteúdo hostil de forma consistente.
+
+Execução versionada: [`17-execucao-etapa-3.md`](17-execucao-etapa-3.md).
 
 ### Rate limiting
 
@@ -267,6 +271,8 @@ e elegível é removido dentro do SLA definido.
 ## Etapa 4 — LGPD, consistência e operação
 
 Objetivo: transformar políticas documentadas em capacidades reais e recuperáveis.
+
+Plano executável: [`18-plano-execucao-etapa-4.md`](18-plano-execucao-etapa-4.md).
 
 ### Direitos do titular e ciclo de dados
 

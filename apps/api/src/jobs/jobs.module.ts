@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuditModule } from '../audit/audit.module';
+import { RateLimitModule } from '../common/rate-limit/rate-limit.module';
 import { CandidateProfile } from '../profiles/candidate-profile.entity';
 import { EmployerProfile } from '../profiles/employer-profile.entity';
 import { ProfileAsset } from '../profiles/profile-asset.entity';
@@ -28,6 +29,7 @@ import { JobsService } from './jobs.service';
       ProfileAsset,
     ]),
     AuditModule,
+    RateLimitModule,
     ProfilesModule,
   ],
   controllers: [

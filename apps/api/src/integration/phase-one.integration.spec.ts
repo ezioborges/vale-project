@@ -102,6 +102,10 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
     expect(registration.body).not.toHaveProperty('accessToken');
     expect(registration.body).not.toHaveProperty('refreshToken');
     expect(registration.body).not.toHaveProperty('devEmailVerificationToken');
+    const storedUser = await users.findOneByOrFail({
+      id: registration.body.user.id,
+    });
+    expect(storedUser.passwordHash).toBeUndefined();
     expect(
       await acceptances.countBy({ userId: registration.body.user.id }),
     ).toBe(3);
@@ -126,6 +130,28 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
 
     expect((await agent.post('/auth/logout').send({})).status).toBe(204);
     expect((await agent.post('/auth/refresh').send({})).status).toBe(401);
+
+    const authEvents = await auditEvents.find({
+      where: { targetUserId: registration.body.user.id },
+    });
+    expect(authEvents.map((event) => event.action)).toEqual(
+      expect.arrayContaining([
+        'auth.registration_succeeded',
+        'auth.email_verified',
+        'auth.login_succeeded',
+        'auth.refresh_succeeded',
+        'auth.logout',
+      ]),
+    );
+    expect(
+      authEvents.find((event) => event.action === 'auth.login_succeeded')
+        ?.context,
+    ).toEqual({ outcome: 'success' });
+    expect(
+      JSON.stringify(authEvents.map((event) => event.context)),
+    ).not.toMatch(
+      /flow@example\.com|initial-password|accessToken|refreshToken/,
+    );
   });
 
   it('uses one-time password reset tokens and revokes existing sessions', async () => {
@@ -408,13 +434,13 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
       sid: expect.any(String),
     });
     expect(payload).not.toHaveProperty('email');
+    expect(payload).not.toHaveProperty('role');
+    expect(payload).not.toHaveProperty('status');
 
     const expiredToken = app.get(JwtService).sign(
       {
         authVersion: payload.authVersion,
-        role: payload.role,
         sid: payload.sid,
-        status: payload.status,
         sub: payload.sub,
       },
       { expiresIn: -1 },
@@ -466,7 +492,8 @@ integrationDescribe('Phase 1 with controllers and PostgreSQL', () => {
       const response = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
-          email: 'absent@example.com',
+          email:
+            attempt % 2 === 0 ? 'absent@example.com' : 'ABSENT@EXAMPLE.COM',
           password: 'incorrect-password',
         });
       expect(response.status).toBe(401);
