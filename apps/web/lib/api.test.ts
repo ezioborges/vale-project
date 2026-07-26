@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { getApiHealth, loginUser } from './api';
+import {
+  getApiHealth,
+  getMyProfile,
+  loginUser,
+  saveCandidateProfile,
+} from './api';
 
 describe('getApiHealth', () => {
   it('validates the API health contract', async () => {
@@ -57,6 +62,83 @@ describe('getApiHealth', () => {
     expect(fetcher).toHaveBeenCalledWith(
       expect.stringContaining('/auth/login'),
       expect.objectContaining({ credentials: 'include' }),
+    );
+  });
+
+  it('treats an absent current profile as an onboarding state', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    });
+
+    await expect(getMyProfile(fetcher)).resolves.toBeNull();
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining('/profiles/me'),
+      expect.objectContaining({ credentials: 'include' }),
+    );
+  });
+
+  it('validates candidate profile responses and keeps privacy explicit', async () => {
+    const now = new Date().toISOString();
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        id: '2f06cad5-bb33-4d79-badb-d77ab25dfa61',
+        kind: 'candidate',
+        userId: 'f37a044e-c943-4e3b-8925-dd8dca19a7ce',
+        displayName: 'Nome Social',
+        pronouns: null,
+        headline: 'Desenvolvedora',
+        bio: null,
+        location: 'Remoto',
+        workPreferences: {
+          areas: ['Tecnologia'],
+          workModes: ['remote'],
+          contractTypes: ['clt'],
+          availability: null,
+        },
+        skills: ['TypeScript'],
+        experiences: [],
+        education: [],
+        professionalLinks: [],
+        visibility: 'private',
+        isActive: true,
+        completionPercentage: 63,
+        avatar: null,
+        resume: null,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    });
+
+    const profile = await saveCandidateProfile(
+      {
+        displayName: 'Nome Social',
+        pronouns: null,
+        headline: 'Desenvolvedora',
+        bio: null,
+        location: 'Remoto',
+        workPreferences: {
+          areas: ['Tecnologia'],
+          workModes: ['remote'],
+          contractTypes: ['clt'],
+          availability: null,
+        },
+        skills: ['TypeScript'],
+        experiences: [],
+        education: [],
+        professionalLinks: [],
+      },
+      fetcher,
+    );
+
+    expect(profile.visibility).toBe('private');
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining('/profiles/candidate/me'),
+      expect.objectContaining({
+        credentials: 'include',
+        method: 'PATCH',
+      }),
     );
   });
 });

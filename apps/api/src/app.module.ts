@@ -14,6 +14,7 @@ import { RateLimitGuard } from './common/rate-limit/rate-limit.guard';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 import { getTypeOrmOptions } from './database/typeorm.config';
 import { HealthModule } from './health/health.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { TermsModule } from './terms/terms.module';
 import { UsersModule } from './users/users.module';
 
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     TermsModule,
     UsersModule,
     AuthModule,
+    ProfilesModule,
     HealthModule,
   ],
   providers: [

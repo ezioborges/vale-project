@@ -117,9 +117,9 @@ export default function Home() {
           <h2 id="next-title">Próxima fatia vertical</h2>
         </div>
         <p className="next-step">
-          A base de identidade e autorização está fechada. A Fase 2 ainda não
-          foi iniciada; seu primeiro corte será o perfil mínimo de candidato e
-          contratante com controle explícito de visibilidade.
+          Identidade, perfis e privacidade estão fechados. A próxima fatia é a
+          Fase 3: vagas moderadas, busca e candidaturas usando a visibilidade
+          definida por cada pessoa candidata.
         </p>
       </section>
     </main>

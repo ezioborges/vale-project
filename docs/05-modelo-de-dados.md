@@ -9,6 +9,7 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | User | Conta base de autenticacao e autorizacao. |
 | CandidateProfile | Perfil profissional do candidato. |
 | EmployerProfile | Perfil do contratante, empresa ou pessoa fisica. |
+| ProfileAsset | Metadados do avatar, logo ou currículo armazenado de forma privada. |
 | Job | Vaga publicada por contratante. |
 | Application | Candidatura de um candidato a uma vaga. |
 | Report | Denuncia feita por usuario autenticado. |
@@ -45,8 +46,9 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | skills | jsonb | Lista inicial simples para MVP. |
 | experiences | jsonb | Experiencias estruturadas. |
 | education | jsonb | Formacao estruturada. |
-| resumeFileUrl | varchar nullable | Arquivo de curriculo. |
+| professionalLinks | jsonb | Links profissionais validados. |
 | visibility | enum | `private`, `applications_only`, `verified_employers`. |
+| isActive | boolean | Permite desativar a exposição sem apagar a trajetória. |
 | createdAt | timestamp | Criacao. |
 | updatedAt | timestamp | Atualizacao. |
 
@@ -59,7 +61,8 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | type | enum | `company`, `organization`, `individual`. |
 | organizationName | varchar nullable | Obrigatorio para empresa/organizacao. |
 | responsibleName | varchar | Pessoa responsavel. |
-| document | varchar nullable | Avaliar necessidade e LGPD. |
+| contactEmail | varchar | Contato profissional do responsável. |
+| contactPhone | varchar nullable | Contato opcional. |
 | segment | varchar nullable | Area de atuacao. |
 | description | text nullable | Descricao institucional. |
 | website | varchar nullable | Site ou rede profissional. |
@@ -67,6 +70,20 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | isVerified | boolean | Validacao administrativa futura. |
 | createdAt | timestamp | Criacao. |
 | updatedAt | timestamp | Atualizacao. |
+
+## ProfileAsset
+
+| Campo | Tipo sugerido | Observacao |
+|---|---|---|
+| id | uuid | Chave primaria. |
+| userId | uuid | Titular do arquivo. |
+| kind | enum | `avatar`, `logo` ou `resume`. |
+| originalName | varchar | Nome normalizado apenas para apresentação/download. |
+| mimeType | varchar | Tipo confirmado por MIME e assinatura do conteúdo. |
+| sizeBytes | integer | Tamanho validado conforme a finalidade. |
+| storageKey | text | Chave aleatória privada; nunca é URL pública. |
+| createdAt | timestamp | Primeiro envio. |
+| updatedAt | timestamp | Substituição da versão corrente. |
 
 ## Job
 
@@ -139,6 +156,7 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 |---|---|
 | User -> CandidateProfile | 1:0..1 |
 | User -> EmployerProfile | 1:0..1 |
+| User -> ProfileAsset | 1:0..N, limitado a uma versão por finalidade |
 | EmployerProfile -> Job | 1:N |
 | Job -> Application | 1:N |
 | CandidateProfile -> Application | 1:N |
@@ -152,6 +170,7 @@ Este documento descreve um modelo conceitual inicial. Os nomes podem ser refinad
 | users | email, role, status |
 | candidate_profiles | userId, visibility |
 | employer_profiles | userId, isVerified |
+| profile_assets | userId, `(userId, kind)` único, storageKey único |
 | jobs | employerProfileId, status, workMode, contractType, seniority, publishedAt |
 | applications | jobId, candidateProfileId, status |
 | reports | status, targetType, targetId |

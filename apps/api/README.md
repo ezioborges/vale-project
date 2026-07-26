@@ -44,7 +44,7 @@ pnpm --filter @vale/api build
 pnpm --filter @vale/api migration:run
 ```
 
-## Endpoints da Fase 1
+## Endpoints entregues
 
 | Endpoint                                        | Uso                                                           |
 | ----------------------------------------------- | ------------------------------------------------------------- |
@@ -57,6 +57,13 @@ pnpm --filter @vale/api migration:run
 | `POST /auth/forgot-password`, `/reset-password` | Recupera senha sem revelar a existência da conta.             |
 | `PATCH /users/:id/role`                         | Altera papel com RBAC admin e auditoria.                      |
 | `PATCH /users/:id/status`                       | Suspende, desativa ou reativa com auditoria.                  |
+| `GET /profiles/me`                              | Retorna o perfil do titular autenticado.                      |
+| `PATCH /profiles/candidate/me`                  | Cria ou atualiza o perfil profissional.                       |
+| `PATCH /profiles/candidate/me/visibility`       | Altera a visibilidade do candidato.                           |
+| `PATCH /profiles/candidate/me/activation`       | Ativa ou desativa o perfil sem apagar dados.                  |
+| `PATCH /profiles/employer/me`                   | Cria ou atualiza o perfil institucional.                      |
+| `GET /profiles/candidates/:id`                  | Aplica autorização por recurso antes de retornar o perfil.    |
+| `POST`, `GET`, `DELETE /profiles/files`         | Gerencia arquivos privados com autorização e auditoria.       |
 
 ## Contrato do provider HTTP de e-mail
 
@@ -65,3 +72,13 @@ Em produção, `EMAIL_PROVIDER=http` é obrigatório. A API envia `POST` para
 `from`, `to`, `subject`, `text` e `html`. Qualquer resposta fora de `2xx` é falha de entrega.
 O adapter remoto ou gateway escolhido deve aceitar esse contrato; o provider `log` é rejeitado no
 bootstrap de produção.
+
+## Storage de arquivos de perfil
+
+Em desenvolvimento, `STORAGE_DRIVER=local` grava os arquivos fora da árvore pública no diretório
+definido por `PROFILE_STORAGE_ROOT`. Produção exige `STORAGE_DRIVER=s3` e as variáveis
+`S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID` e `S3_SECRET_ACCESS_KEY`. O adapter usa
+assinatura AWS v4 e atende S3, R2 e serviços compatíveis por path-style URL.
+
+Os arquivos não possuem URL pública. Use `GET /profiles/files/:id`, que repete a autorização do
+titular, da equipe ou da política de visibilidade do candidato.

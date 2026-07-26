@@ -78,9 +78,13 @@ pnpm dev
 | API health | `http://localhost:3001/health` |
 | Swagger | `http://localhost:3001/docs` |
 
-No ambiente local, o cadastro retorna um token de verificação de e-mail para o formulário da página
-inicial. Esse comportamento substitui temporariamente o provider fake/log e é desabilitado quando
-`NODE_ENV=production`.
+No ambiente local, o provider `log` registra no terminal da API o link de verificação enviado para
+uma identidade fictícia. Tokens não fazem parte da resposta HTTP. O provider `log` é rejeitado
+quando `NODE_ENV=production`.
+
+Arquivos de perfil ficam em `.data/profile-uploads` por padrão. O diretório não é servido pelo
+Next.js nem pelo NestJS; downloads passam por `GET /profiles/files/:id`. Use somente arquivos
+fictícios no ambiente local.
 
 ## 5. Validar a fundação
 

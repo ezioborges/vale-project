@@ -28,6 +28,9 @@ compartilhados entre eles.
 | `LEGAL_*_VERSION` | versões de termos, privacidade e diretrizes | publicar e atualizar de forma coordenada |
 | `EMAIL_PROVIDER` | adapter de entrega | `log` local; obrigatoriamente `http` em produção |
 | `EMAIL_HTTP_*` | endpoint e credencial do gateway remoto | obrigatórios e secretos em produção |
+| `STORAGE_DRIVER` | adapter de arquivos de perfil | `local` em desenvolvimento; obrigatoriamente `s3` em produção |
+| `PROFILE_STORAGE_ROOT` | diretório privado do adapter local | fora da árvore pública e com dados fictícios |
+| `S3_*` | endpoint, bucket, região e credenciais S3/R2 | obrigatórios e secretos quando o driver for `s3` |
 | `SEED_ADMIN_*` | bootstrap local de admin | ausente em produção |
 | `NEXT_PUBLIC_API_BASE_URL` | endereço público da API | não pode conter segredo |
 
@@ -35,7 +38,8 @@ Arquivos `.env` não são versionados. Variáveis remotas ficam no cofre da plat
 segredos em variáveis `NEXT_PUBLIC_*`, logs, tickets ou screenshots.
 
 O bootstrap recusa produção quando segredo JWT, CORS ou credenciais de banco ainda usam os valores
-locais da `.env.example`, e também quando o provider remoto de e-mail não está completo.
+locais da `.env.example`, quando o provider remoto de e-mail não está completo, quando o storage
+local está selecionado ou quando faltam parâmetros S3/R2.
 
 ## Ordem de promoção
 
@@ -61,6 +65,8 @@ uma entrega posterior.
 - contas suspensas ou desabilitadas não autenticam;
 - endpoint administrativo rejeita atores sem papel admin;
 - logs não contêm senha, access token, refresh token ou token de verificação;
+- upload de teste autorizado é privado, e um papel sem acesso recebe `403`;
+- bucket de arquivos bloqueia acesso público e aplica criptografia e retenção definidas pelo ambiente;
 - `SEED_ADMIN_EMAIL` e `SEED_ADMIN_PASSWORD` não existem em produção.
 
 ## Estado atual

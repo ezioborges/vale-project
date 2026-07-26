@@ -97,15 +97,15 @@ vale-project/
     runbooks/
 ```
 
-| Pasta           | Uso                                                           |
-| --------------- | ------------------------------------------------------------- |
-| apps/api        | API NestJS, autenticacao, usuarios, termos e acesso ao banco. |
-| apps/web        | Aplicacao Next.js e fluxos web iniciais.                      |
-| packages/shared | Contratos e utilitarios compartilhados.                       |
-| docs            | Documentacao de produto, arquitetura, seguranca e qualidade.  |
+| Pasta           | Uso                                                          |
+| --------------- | ------------------------------------------------------------ |
+| apps/api        | API NestJS, identidade, perfis, privacidade, termos e banco. |
+| apps/web        | Aplicacao Next.js, autenticação e edição de perfis.          |
+| packages/shared | Contratos Zod e tipos compartilhados.                        |
+| docs            | Documentacao de produto, arquitetura, seguranca e qualidade. |
 
 ## Status
 
-Fase atual: Fase 1 concluida e Fase 2 ainda nao iniciada. Identidade, consentimentos separados,
-sessao por cookies, recuperacao de senha, verificacao de e-mail, RBAC, estados de conta, rate
-limiting e auditoria administrativa minima possuem cobertura automatizada com PostgreSQL real.
+Fase atual: Fases 0, 1 e 2 concluídas; Fase 3 é o próximo marco. Identidade, consentimentos,
+sessão por cookies, recuperação de senha, RBAC, perfis estruturados, visibilidade, uploads privados
+e auditoria mínima possuem cobertura automatizada com PostgreSQL real.

@@ -14,6 +14,7 @@ import { User } from '../users/user.entity';
 import { InitializeDatabase1710000000000 } from '../database/migrations/1710000000000-InitializeDatabase';
 import { CreateIdentityTables1710000001000 } from '../database/migrations/1710000001000-CreateIdentityTables';
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
+import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
 
 const integrationDescribe =
   process.env.RUN_INTEGRATION_TESTS === 'true' ? describe : describe.skip;
@@ -399,6 +400,7 @@ async function resetTestDatabase(): Promise<void> {
       InitializeDatabase1710000000000,
       CreateIdentityTables1710000001000,
       CompletePhaseOne1710000002000,
+      CreateProfilesAndPrivacy1710000003000,
     ],
   });
 

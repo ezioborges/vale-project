@@ -29,7 +29,29 @@ describe('production environment validation', () => {
     ).toBe(true);
   });
 
-  it('accepts non-local production credentials with the HTTP provider', () => {
+  it('requires remote object storage in production', () => {
+    const local = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      STORAGE_DRIVER: 'local',
+    });
+    expect(local.success).toBe(false);
+    expect(
+      local.error?.issues.some((issue) => issue.path[0] === 'STORAGE_DRIVER'),
+    ).toBe(true);
+
+    const incomplete = envSchema.safeParse({
+      ...validProductionEnvironment(),
+      S3_SECRET_ACCESS_KEY: undefined,
+    });
+    expect(incomplete.success).toBe(false);
+    expect(
+      incomplete.error?.issues.some(
+        (issue) => issue.path[0] === 'S3_SECRET_ACCESS_KEY',
+      ),
+    ).toBe(true);
+  });
+
+  it('accepts non-local production credentials with remote providers', () => {
     expect(envSchema.safeParse(validProductionEnvironment()).success).toBe(
       true,
     );
@@ -50,5 +72,11 @@ function validProductionEnvironment() {
     EMAIL_FROM: 'contato@vale.example',
     EMAIL_HTTP_ENDPOINT: 'https://email.vale.example/send',
     EMAIL_HTTP_TOKEN: 'remote-provider-token',
+    STORAGE_DRIVER: 's3',
+    S3_ENDPOINT: 'https://storage.vale.example',
+    S3_BUCKET: 'profile-files',
+    S3_REGION: 'auto',
+    S3_ACCESS_KEY_ID: 'storage-access-key',
+    S3_SECRET_ACCESS_KEY: 'storage-secret-key',
   };
 }

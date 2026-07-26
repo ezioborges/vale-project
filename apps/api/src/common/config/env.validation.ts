@@ -55,6 +55,13 @@ export const envSchema = z
     EMAIL_FROM: z.string().email().default(LOCAL_DEFAULTS.EMAIL_FROM),
     EMAIL_HTTP_ENDPOINT: z.string().url().optional(),
     EMAIL_HTTP_TOKEN: z.string().min(16).optional(),
+    STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    PROFILE_STORAGE_ROOT: z.string().min(1).default('.data/profile-uploads'),
+    S3_ENDPOINT: z.string().url().optional(),
+    S3_BUCKET: z.string().min(1).optional(),
+    S3_REGION: z.string().min(1).optional(),
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     SEED_ADMIN_EMAIL: z.string().email().optional(),
     SEED_ADMIN_PASSWORD: z.string().min(12).optional(),
   })
@@ -74,6 +81,24 @@ export const envSchema = z
           message: 'EMAIL_HTTP_TOKEN is required for the HTTP provider.',
           path: ['EMAIL_HTTP_TOKEN'],
         });
+      }
+    }
+
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const key of [
+        'S3_ENDPOINT',
+        'S3_BUCKET',
+        'S3_REGION',
+        'S3_ACCESS_KEY_ID',
+        'S3_SECRET_ACCESS_KEY',
+      ] as const) {
+        if (!env[key]) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${key} is required for S3-compatible storage.`,
+            path: [key],
+          });
+        }
       }
     }
 
@@ -107,6 +132,14 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         message: 'A remote email provider is required in production.',
         path: ['EMAIL_PROVIDER'],
+      });
+    }
+
+    if (env.STORAGE_DRIVER !== 's3') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'S3-compatible storage is required in production.',
+        path: ['STORAGE_DRIVER'],
       });
     }
   });

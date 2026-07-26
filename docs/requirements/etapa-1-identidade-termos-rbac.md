@@ -99,6 +99,5 @@ com controllers NestJS e Supertest. O banco de desenvolvimento não é utilizado
 
 ## Próximo marco
 
-A Fase 2 permanece não iniciada. Ela pode começar somente a partir deste fechamento, com perfis
-mínimos e controles de visibilidade, sem reabrir as decisões de identidade, consentimento e
-autorização estabelecidas aqui.
+A Fase 2 foi concluída sem reabrir as decisões desta etapa. O registro atual está em
+[`etapa-2-perfis-privacidade.md`](etapa-2-perfis-privacidade.md), e a Fase 3 é o próximo marco.

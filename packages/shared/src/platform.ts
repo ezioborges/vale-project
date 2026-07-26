@@ -23,6 +23,7 @@ export type LegalDocumentType = (typeof legalDocumentTypes)[number];
 export const jobStatuses = [
   'draft',
   'pending_review',
+  'changes_requested',
   'approved',
   'rejected',
   'paused',
@@ -46,3 +47,44 @@ export const profileVisibilities = [
   'verified_employers',
 ] as const;
 export type ProfileVisibility = (typeof profileVisibilities)[number];
+
+export const employerProfileTypes = [
+  'company',
+  'organization',
+  'individual',
+] as const;
+export type EmployerProfileType = (typeof employerProfileTypes)[number];
+
+export const profileAssetKinds = ['avatar', 'logo', 'resume'] as const;
+export type ProfileAssetKind = (typeof profileAssetKinds)[number];
+
+export const workModes = ['remote', 'hybrid', 'onsite'] as const;
+export type WorkMode = (typeof workModes)[number];
+
+export const contractTypes = [
+  'clt',
+  'pj',
+  'internship',
+  'temporary',
+  'freelance',
+  'other',
+] as const;
+export type ContractType = (typeof contractTypes)[number];
+
+export const jobSeniorities = [
+  'intern',
+  'junior',
+  'mid',
+  'senior',
+  'lead',
+  'specialist',
+  'not_applicable',
+] as const;
+export type JobSeniority = (typeof jobSeniorities)[number];
+
+export const jobModerationDecisions = [
+  'approve',
+  'request_changes',
+  'reject',
+] as const;
+export type JobModerationDecision = (typeof jobModerationDecisions)[number];

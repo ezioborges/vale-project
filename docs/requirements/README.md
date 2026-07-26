@@ -7,13 +7,13 @@ confundir intenção do plano com funcionalidade comprovada.
 
 ## Estado consolidado
 
-Última verificação: 2026-07-24.
+Última verificação: 2026-07-26.
 
 | Fase | Estado | Registro |
 | --- | --- | --- |
 | 0 — Fundação técnica | Concluída | [etapa-0-fundacao.md](etapa-0-fundacao.md) |
 | 1 — Identidade, termos e RBAC | Concluída | [etapa-1-identidade-termos-rbac.md](etapa-1-identidade-termos-rbac.md) |
-| 2 — Perfis e privacidade | Não iniciada | Será criado quando houver implementação verificável |
+| 2 — Perfis e privacidade | Concluída | [etapa-2-perfis-privacidade.md](etapa-2-perfis-privacidade.md) |
 | 3 — Vagas, busca e candidaturas | Não iniciada | Será criado quando houver implementação verificável |
 | 4 — Denúncias, administração e auditoria | Não iniciada | Será criado quando houver implementação verificável |
 
