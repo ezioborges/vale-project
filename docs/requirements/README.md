@@ -1,7 +1,7 @@
 # Registros de execução dos requisitos
 
 Este diretório registra o que foi efetivamente implementado em cada fase do
-[plano de ação do MVP](../09-plano-de-acao.md). O formato segue o padrão do projeto
+[plano de ação do MVP](../planos-de-acao/09-plano-de-acao-mvp.md). O formato segue o padrão do projeto
 canarinho2.0: cada etapa informa estado, escopo entregue, evidências, validações e pendências, sem
 confundir intenção do plano com funcionalidade comprovada.
 

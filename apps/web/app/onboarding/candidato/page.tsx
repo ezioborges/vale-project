@@ -1,5 +1,4 @@
-import Link from 'next/link';
-
+import { PublicIdentityLayout } from '@/components/identity-layout';
 import { OnboardingVerification } from '@/components/onboarding-verification';
 
 export default async function CandidateOnboarding({
@@ -10,15 +9,8 @@ export default async function CandidateOnboarding({
   const { token } = await searchParams;
 
   return (
-    <main className="app-shell protected-area">
-      <header className="topbar">
-        <Link className="brand" href="/">
-          Vale Project
-        </Link>
-      </header>
-      <div className="onboarding-layout">
-        <OnboardingVerification role="candidate" token={token} />
-      </div>
-    </main>
+    <PublicIdentityLayout>
+      <OnboardingVerification role="candidate" token={token} />
+    </PublicIdentityLayout>
   );
 }

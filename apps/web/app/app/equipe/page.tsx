@@ -1,36 +1,24 @@
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+import { ActionLink } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { PageHeading } from '@/components/ui/page-heading';
 
 export default function TeamHome() {
   return (
-    <main className="app-shell protected-area">
-      <header className="topbar">
-        <Link className="brand" href="/">
-          Vale Project
-        </Link>
-        <nav className="nav-links" aria-label="Área da equipe">
-          <Link href="/app/equipe/moderacao">Moderação de vagas</Link>
-          <Link href="/app/equipe/denuncias">Denúncias</Link>
-        </nav>
-      </header>
-      <section className="content-band">
-        <div className="section-heading">
-          <span>Coordenação</span>
-          <h1>Área da equipe</h1>
-        </div>
-        <p className="next-step">
-          Revise oportunidades antes da publicação e acompanhe decisões
-          rastreáveis. A autorização continua sendo aplicada em cada ação pela
-          API.
-        </p>
-        <div className="inline-actions">
-          <Link className="primary-action" href="/app/equipe/moderacao">
-            Moderar vagas
-          </Link>
-          <Link className="secondary-action" href="/app/equipe/denuncias">
-            Analisar denúncias
-          </Link>
-        </div>
-      </section>
-    </main>
+    <Card className="max-w-3xl p-6 sm:p-8">
+      <Badge tone="info">Coordenação</Badge>
+      <PageHeading
+        as="h1"
+        className="mt-5"
+        description="Revise oportunidades antes da publicação e acompanhe decisões rastreáveis. A API continua autorizando cada ação."
+        title="Área da equipe"
+      />
+      <div className="mt-7 flex flex-wrap gap-3">
+        <ActionLink href="/app/equipe/moderacao">Moderar vagas</ActionLink>
+        <ActionLink href="/app/equipe/denuncias" variant="secondary">
+          Analisar denúncias
+        </ActionLink>
+      </div>
+    </Card>
   );
 }

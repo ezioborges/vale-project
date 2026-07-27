@@ -1,68 +1,83 @@
 # Execução transversal — laboratório e fundação de interface
 
-- Data da verificação: 2026-07-24
+- Data da verificação: 2026-07-27
 - Plano de origem:
-  [`../12-plano-aplicacao-design.md`](../12-plano-aplicacao-design.md)
+  [`../planos-de-acao/12-plano-aplicacao-design.md`](../planos-de-acao/12-plano-aplicacao-design.md)
 - Decisão arquitetural:
   [`../adr/0002-design-system-interface.md`](../adr/0002-design-system-interface.md)
-- Estado: referência inicial implementada; extração de componentes e aplicação nas rotas funcionais
-  permanecem pendentes
+- Estado: fundação reutilizável e aplicação nas jornadas de identidade, perfil e mercado implementadas
+  localmente; auditoria manual de navegador continua pendente.
 
 ## Escopo entregue
 
-- rota pública `/laboratorio-ui`;
-- tema Tailwind com tokens semânticos do Vale;
-- Font Awesome Free integrado ao frontend;
-- exemplos responsivos de cor, tipografia, botões, campos, badges e iconografia;
-- exemplo de cadastro alinhado à escolha entre pessoa candidata e contratante;
-- exemplos de vaga, progresso de perfil, filtros, feedback e estado vazio;
-- critérios visíveis de acessibilidade e plano de aplicação por fase;
-- prancha visual em `docs/assets/laboratorio-ui-apresentacao.png`;
-- ADR, plano de adoção e runbook de manutenção.
+- rota pública `/laboratorio-ui` com tokens, primitivas e exemplos navegáveis;
+- tema Tailwind com tokens semânticos e Font Awesome Free;
+- primitivas compartilhadas de ação, campo, feedback, card, layout, badge e diálogo;
+- moldura comum para a área autenticada;
+- aplicação do padrão nas jornadas de identidade e perfil;
+- etapa 4 de mercado aplicada em busca, detalhe, candidatura, acompanhamento, gestão e moderação de
+  vagas;
+- filtros removíveis, paginação e indicação da ordenação estável definida pela API;
+- revisão consciente dos dados compartilhados na candidatura e revisão antes de enviar uma vaga;
+- confirmação contextual para cancelar candidatura e encerrar vaga;
+- componentes compartilhados `JobStatusBadge`, `ApplicationStatusBadge` e `JobMetadata`, usados em
+  produção e no laboratório;
+- testes de contrato das primitivas e da jornada de mercado.
 
 ## Rastreabilidade
 
-| Requisito | Estado | Evidência ou pendência |
+| Requisito | Estado | Evidência |
 | --- | --- | --- |
-| UI-RF-01 — disponibilizar referência navegável | Atendido | rota `apps/web/app/laboratorio-ui/page.tsx` |
-| UI-RF-02 — representar cadastro por papel | Atendido como exemplo | seletor de pessoa candidata e contratante; não envia dados |
-| UI-RF-03 — representar contratação e serviços | Parcial | vaga, perfil e filtros existem; fluxo de serviço terá detalhamento na Fase 3 |
-| UI-RF-04 — documentar plano de aplicação | Atendido | `docs/12-plano-aplicacao-design.md` |
+| UI-RF-01 — disponibilizar referência navegável | Atendido | `apps/web/app/laboratorio-ui/page.tsx` |
+| UI-RF-02 — representar cadastro por papel | Atendido | `apps/web/components/auth-panel.tsx` |
+| UI-RF-03 — representar contratação e serviços | Atendido para o mercado de vagas | `jobs-search.tsx`, `job-detail.tsx`, `candidate-applications.tsx`, `employer-job-manager.tsx` e `moderation-queue.tsx` |
+| UI-RF-04 — documentar plano de aplicação | Atendido | `docs/planos-de-acao/12-plano-aplicacao-design.md` |
 | UI-RF-05 — disponibilizar apresentação visual | Atendido | imagem incorporada ao índice e ao plano de aplicação |
 | UI-RNF-01 — usar Tailwind | Atendido | tema e utilitários processados pelo PostCSS |
 | UI-RNF-02 — usar biblioteca de ícones | Atendido | Font Awesome Free |
-| UI-RNF-03 — manter fundo claro e contraste | Atendido na referência | canvas claro, superfícies brancas e texto escuro |
-| UI-RNF-04 — comunicar estado além da cor | Atendido na referência | texto e ícones acompanham feedbacks e badges |
-| UI-RNF-05 — navegação por teclado e foco visível | Implementado; auditoria manual pendente | controles possuem foco explícito e semântica nativa |
-| UI-RNF-06 — responsividade | Implementado; auditoria visual pendente | grades e navegação possuem variações por breakpoint |
+| UI-RNF-03 — manter fundo claro e contraste | Implementado; auditoria manual pendente | canvas, superfícies e tokens semânticos |
+| UI-RNF-04 — comunicar estado além da cor | Atendido | badges, alertas e orientações textuais por estado |
+| UI-RNF-05 — navegação por teclado e foco visível | Implementado; auditoria manual pendente | controles nativos, diálogo e foco explícito |
+| UI-RNF-06 — responsividade | Implementado; auditoria visual pendente | grades, navegação e áreas de ação responsivas |
+
+## Etapa 4 — Mercado
+
+| Área | Aplicação entregue |
+| --- | --- |
+| `/vagas` | busca por texto, área, localidade, modalidade, contrato e senioridade; filtros removíveis, resultado, carregamento, erro, vazio e paginação |
+| `/vagas/[id]` | contexto da organização, detalhes, faixa, acessibilidade, revisão da candidatura e denúncia confidencial |
+| candidaturas da pessoa candidata | status nomeado, próximo passo, histórico, currículo preservado, cancelamento confirmado e denúncia |
+| gestão da pessoa contratante | formulário por seções, ajuda contextual, revisão antes do envio, estados, transições permitidas e candidaturas recebidas |
+| moderação de vagas | filtro de fila, contexto da vaga, motivo associado à decisão e retorno de sucesso ou erro |
+
+Nenhum contrato de busca, autorização, visibilidade, transição ou moderação foi transferido para o
+frontend: a API continua sendo a autoridade. A ordenação pública permanece a estável por publicação
+e ID definida pelo backend; a interface a comunica como “mais recentes primeiro”, sem introduzir um
+contrato de ordenação novo.
 
 ## Limites conhecidos
 
-- a rota é uma referência visual e seus formulários não integram a API;
-- os componentes ainda estão locais na página e precisam ser extraídos conforme ganharem consumidores;
-- as rotas existentes ainda não foram migradas para evitar misturar a entrega visual com mudanças
-  funcionais da Fase 1;
-- testes automatizados de acessibilidade e regressão visual ainda não fazem parte do pipeline;
-- a referência visual ainda precisa incorporar os três consentimentos independentes definidos no
-  fechamento da Fase 1.
+- testes E2E de navegador, auditoria de leitor de tela, contraste e regressão visual continuam
+  pendentes antes de um piloto público;
+- a auditoria manual ainda deve cobrir 320 px, 768 px, 1280 px ou mais e zoom de 200%;
+- o backend não expõe alternativas de ordenação pública; por isso a interface não oferece um seletor
+  que sugeriria uma capacidade inexistente;
+- o CSS legado continua no repositório para as rotas ainda não migradas e só deve ser removido após
+  inventário de consumidores e regressão validada.
 
 ## Validações executadas
 
-Em 2026-07-24:
+Em 2026-07-27:
 
 | Validação | Resultado |
 | --- | --- |
 | typecheck do frontend | aprovado |
 | lint do frontend | aprovado |
-| testes do frontend | 2 testes aprovados |
-| build de produção do frontend | aprovado; `/laboratorio-ui` gerada como rota estática |
-| formatação dos arquivos alterados | aprovada |
-
-Essas validações confirmam integração técnica e compilação. Auditoria visual em navegadores, zoom,
-teclado e leitor de tela continua necessária antes de aplicar o padrão a um fluxo de produção.
+| testes do frontend | aprovado; 24 testes, incluindo 4 da jornada de mercado |
+| build de produção do frontend | aprovado |
+| formatação dos arquivos alterados | aprovada; a checagem global permanece vermelha por cinco arquivos preexistentes e fora deste lote |
 
 ## Próximo marco
 
-Extrair os componentes fundamentais e aplicar o padrão no fluxo real de cadastro e login. A
-conclusão exige responsividade, teclado, estados de API e testes automatizados proporcionais ao
-risco de identidade e consentimento.
+Executar a auditoria manual de responsividade, zoom, teclado e leitor de tela da jornada de mercado;
+depois, aplicar o mesmo padrão às filas e decisões sensíveis restantes de governança.

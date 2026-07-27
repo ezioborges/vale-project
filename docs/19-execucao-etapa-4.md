@@ -1,6 +1,6 @@
 # Execução inicial da etapa 4 — LGPD, consistência e operação
 
-- Plano executado: [18-plano-execucao-etapa-4.md](18-plano-execucao-etapa-4.md)
+- Plano executado: [18-plano-execucao-etapa-4.md](planos-de-acao/etapas/18-plano-execucao-etapa-4.md)
 - Data da verificação: 2026-07-26
 - Estado: implementação técnica inicial concluída; ativações de tratamento dependem de aprovação
 

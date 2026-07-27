@@ -9,7 +9,7 @@ O objetivo e manter os documentos pequenos, versionaveis e faceis de transformar
 ![Apresentação da proposta visual do Vale](assets/laboratorio-ui-apresentacao.png)
 
 A implementação e a sequência de adoção estão descritas no
-[plano de aplicação do design](12-plano-aplicacao-design.md).
+[plano de aplicação do design](planos-de-acao/12-plano-aplicacao-design.md).
 
 ## Ordem recomendada de leitura
 
@@ -24,16 +24,16 @@ A implementação e a sequência de adoção estão descritas no
 | 7 | [06-seguranca-e-lgpd.md](06-seguranca-e-lgpd.md) |
 | 8 | [07-testes-e-qualidade.md](07-testes-e-qualidade.md) |
 | 9 | [08-backlog-e-roadmap.md](08-backlog-e-roadmap.md) |
-| 10 | [09-plano-de-acao.md](09-plano-de-acao.md) |
+| 10 | [planos-de-acao/09-plano-de-acao-mvp.md](planos-de-acao/09-plano-de-acao-mvp.md) |
 | 11 | [10-plano-de-estudos.md](10-plano-de-estudos.md) |
 | 12 | [11-estudo-pnpm-workspaces.md](11-estudo-pnpm-workspaces.md) |
-| 13 | [12-plano-aplicacao-design.md](12-plano-aplicacao-design.md) |
-| 14 | [13-plano-melhorias-seguranca-fluxo.md](13-plano-melhorias-seguranca-fluxo.md) |
-| 15 | [14-plano-acao-etapa-0.md](14-plano-acao-etapa-0.md) |
+| 13 | [planos-de-acao/12-plano-aplicacao-design.md](planos-de-acao/12-plano-aplicacao-design.md) |
+| 14 | [planos-de-acao/13-plano-melhorias-seguranca-fluxo.md](planos-de-acao/13-plano-melhorias-seguranca-fluxo.md) |
+| 15 | [planos-de-acao/etapas/14-plano-acao-etapa-0.md](planos-de-acao/etapas/14-plano-acao-etapa-0.md) |
 | 16 | [15-execucao-etapa-1.md](15-execucao-etapa-1.md) |
 | 17 | [16-execucao-etapa-2.md](16-execucao-etapa-2.md) |
 | 18 | [17-execucao-etapa-3.md](17-execucao-etapa-3.md) |
-| 19 | [18-plano-execucao-etapa-4.md](18-plano-execucao-etapa-4.md) |
+| 19 | [planos-de-acao/etapas/18-plano-execucao-etapa-4.md](planos-de-acao/etapas/18-plano-execucao-etapa-4.md) |
 | 20 | [19-execucao-etapa-4.md](19-execucao-etapa-4.md) |
 | 21 | [requirements/README.md](requirements/README.md) |
 | 22 | [runbooks/README.md](runbooks/README.md) |
@@ -45,6 +45,7 @@ A implementação e a sequência de adoção estão descritas no
 | [requirements](requirements/README.md) | execução verificável, rastreabilidade e pendências por fase |
 | [runbooks](runbooks/README.md) | setup local, ambientes, promoção e checklists operacionais |
 | [adr](adr/0002-design-system-interface.md) | decisões arquiteturais e suas consequências |
+| [planos-de-acao](planos-de-acao/README.md) | direcionamento do MVP, planos transversais e planos por etapa |
 
 ## Convencoes
 

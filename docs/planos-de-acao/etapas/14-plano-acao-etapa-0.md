@@ -2,8 +2,8 @@
 
 - Data do levantamento: 2026-07-26
 - Plano de origem:
-  [`13-plano-melhorias-seguranca-fluxo.md`](13-plano-melhorias-seguranca-fluxo.md)
-- Estado: concluído em 2026-07-26; ver [registro de execução](requirements/etapa-0-melhorias-seguranca-ci.md)
+  [`13-plano-melhorias-seguranca-fluxo.md`](../13-plano-melhorias-seguranca-fluxo.md)
+- Estado: concluído em 2026-07-26; ver [registro de execução](../../requirements/etapa-0-melhorias-seguranca-ci.md)
 - Tamanho estimado: M, de três a cinco dias de trabalho, além do tempo de revisão
 
 ## Resultado esperado

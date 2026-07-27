@@ -11,7 +11,7 @@ import {
   type ProfileVisibility,
   type WorkMode,
 } from '@vale/shared';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import {
   getCurrentUser,
@@ -20,7 +20,24 @@ import {
   updateCandidateActivation,
   updateCandidateVisibility,
 } from '@/lib/api';
+
 import { ProfileAssetControl } from './profile-asset-control';
+import {
+  ProfileEditorLayout,
+  ProfileIntro,
+  ProfileSaveBar,
+  ProfileSection,
+} from './profile-editor-layout';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Alert, LoadingState } from './ui/feedback';
+import {
+  CheckboxField,
+  FormField,
+  RadioCard,
+  TextArea,
+  TextInput,
+} from './ui/form-field';
 
 const workModeLabels: Record<WorkMode, string> = {
   remote: 'Remoto',
@@ -39,32 +56,41 @@ const contractLabels: Record<ContractType, string> = {
 
 const visibilityCopy: Record<
   ProfileVisibility,
-  { label: string; description: string }
+  { label: string; description: string; preview: string }
 > = {
   private: {
     label: 'Privado',
-    description: 'Somente você e a equipe autorizada do Vale.',
+    description: 'Seu perfil não fica disponível para contratantes.',
+    preview:
+      'Somente você e a equipe autorizada do Vale podem acessar seus dados profissionais.',
   },
   applications_only: {
     label: 'Apenas candidaturas',
     description:
-      'Contratantes acessam seus dados somente quando você se candidatar.',
+      'O acesso é liberado somente na relação criada por uma candidatura.',
+    preview:
+      'O contratante responsável por uma vaga recebe acesso apenas enquanto houver uma candidatura sua elegível para essa vaga.',
   },
   verified_employers: {
     label: 'Contratantes verificados',
-    description:
-      'Seu perfil completo pode ser visto por contratantes validados.',
+    description: 'Seu perfil completo pode ser visto por organizações validadas.',
+    preview:
+      'Apenas contratantes institucionalmente verificados podem acessar seu perfil completo. Um perfil inativo não fica disponível.',
   },
 };
 
 export function CandidateProfileForm() {
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState<CandidateProfileInput>(emptyCandidate());
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [message, setMessage] = useState('Carregando seu perfil…');
   const [isBusy, setIsBusy] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
+
     Promise.all([getCurrentUser(), getMyProfile()])
       .then(([user, current]) => {
         if (!active) return;
@@ -72,38 +98,41 @@ export function CandidateProfileForm() {
           setProfile(current);
           setDraft(toCandidateInput(current));
           setMessage('Perfil carregado.');
-        } else {
-          setDraft((value) => ({ ...value, displayName: user.displayName }));
-          setMessage(
-            'Comece com o essencial. Seu perfil nasce privado e você decide quando ampliar o acesso.',
-          );
+          return;
         }
+        setDraft((value) => ({ ...value, displayName: user.displayName }));
+        setMessage(
+          'Comece com o essencial. Seu perfil nasce privado e você decide quando ampliar o acesso.',
+        );
       })
       .catch((error) => {
-        if (active) {
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar o perfil.',
-          );
-        }
+        if (!active) return;
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar o perfil.',
+        );
       })
       .finally(() => {
         if (active) setIsBusy(false);
       });
+
     return () => {
       active = false;
     };
   }, []);
 
-  async function save(event: FormEvent) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = candidateProfileInputSchema.safeParse(draft);
     if (!parsed.success) {
-      setMessage(parsed.error.issues[0]?.message ?? 'Revise os campos.');
+      setFieldErrors(toFieldErrors(parsed.error.issues));
+      setMessage('Revise os campos destacados antes de salvar.');
+      focusFirstError();
       return;
     }
 
+    setFieldErrors({});
     setIsBusy(true);
     setMessage('Salvando perfil…');
     try {
@@ -115,6 +144,7 @@ export function CandidateProfileForm() {
       setMessage(
         error instanceof Error ? error.message : 'Não foi possível salvar.',
       );
+      requestAnimationFrame(() => feedbackRef.current?.focus());
     } finally {
       setIsBusy(false);
     }
@@ -123,16 +153,18 @@ export function CandidateProfileForm() {
   async function changeVisibility(visibility: ProfileVisibility) {
     if (!profile) return;
     setIsBusy(true);
-    setMessage('Atualizando privacidade…');
+    setMessage('Atualizando a visibilidade…');
     try {
-      setProfile(await updateCandidateVisibility(visibility));
-      setMessage('Privacidade atualizada.');
+      const saved = await updateCandidateVisibility(visibility);
+      setProfile(saved);
+      setMessage(`Visibilidade atualizada para ${visibilityCopy[visibility].label}.`);
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
           : 'Não foi possível atualizar a privacidade.',
       );
+      requestAnimationFrame(() => feedbackRef.current?.focus());
     } finally {
       setIsBusy(false);
     }
@@ -141,12 +173,14 @@ export function CandidateProfileForm() {
   async function changeActivation(isActive: boolean) {
     if (!profile) return;
     setIsBusy(true);
+    setMessage(isActive ? 'Reativando perfil…' : 'Desativando perfil…');
     try {
-      setProfile(await updateCandidateActivation(isActive));
+      const saved = await updateCandidateActivation(isActive);
+      setProfile(saved);
       setMessage(
         isActive
           ? 'Perfil reativado com a mesma regra de privacidade.'
-          : 'Perfil desativado e indisponível para contratantes.',
+          : 'Perfil desativado. Contratantes não podem mais acessar sua trajetória.',
       );
     } catch (error) {
       setMessage(
@@ -154,9 +188,19 @@ export function CandidateProfileForm() {
           ? error.message
           : 'Não foi possível alterar a ativação.',
       );
+      requestAnimationFrame(() => feedbackRef.current?.focus());
     } finally {
       setIsBusy(false);
     }
+  }
+
+  function focusFirstError() {
+    requestAnimationFrame(() => {
+      const invalid = formRef.current?.querySelector<HTMLElement>(
+        '[aria-invalid="true"]',
+      );
+      (invalid ?? feedbackRef.current)?.focus();
+    });
   }
 
   function toggleWorkMode(mode: WorkMode) {
@@ -179,48 +223,52 @@ export function CandidateProfileForm() {
     }));
   }
 
-  return (
-    <div className="profile-workspace">
-      <aside className="profile-overview">
-        <span className="eyebrow">Perfil profissional</span>
-        <h1>Apresente sua trajetória do seu jeito</h1>
-        <p>
-          Pronomes são opcionais. O Vale não pede orientação sexual nem
-          identidade de gênero para liberar oportunidades.
-        </p>
-        <div className="completion-card">
-          <div>
-            <strong>{profile?.completionPercentage ?? 0}%</strong>
-            <span>do perfil completo</span>
-          </div>
-          <progress
-            aria-label="Conclusão do perfil"
-            max="100"
-            value={profile?.completionPercentage ?? 0}
-          />
-        </div>
-        <div className="privacy-note">
-          <strong>Privacidade por padrão</strong>
-          <p>
-            Um perfil novo começa privado. Arquivos nunca ficam em uma pasta
-            pública e todo download passa novamente pela autorização.
-          </p>
-        </div>
-      </aside>
+  if (isBusy && message === 'Carregando seu perfil…') {
+    return <LoadingState label="Carregando seu perfil" />;
+  }
 
-      <form className="profile-form" onSubmit={save}>
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>01</span>
-            <div>
-              <h2>Apresentação</h2>
-              <p>Informações que ajudam a contextualizar seu trabalho.</p>
-            </div>
-          </div>
-          <div className="field-grid">
-            <label>
-              Nome de exibição
-              <input
+  const selectedVisibility = profile?.visibility ?? 'private';
+
+  return (
+    <ProfileEditorLayout
+      aside={
+        <ProfileIntro
+          completion={profile?.completionPercentage ?? 0}
+          description="Pronomes são opcionais. O Vale não pede orientação sexual nem identidade de gênero para liberar oportunidades."
+          eyebrow="Perfil profissional"
+          title="Apresente sua trajetória do seu jeito"
+        >
+          <Alert title="Privacidade por padrão" tone="info">
+            Um perfil novo começa privado. Arquivos nunca ficam em uma pasta
+            pública e cada download passa novamente pela autorização.
+          </Alert>
+        </ProfileIntro>
+      }
+    >
+      <form className="grid gap-6" noValidate onSubmit={save} ref={formRef}>
+        <div ref={feedbackRef} tabIndex={-1}>
+          <Alert
+            title={Object.keys(fieldErrors).length ? 'Revise o perfil' : 'Estado do salvamento'}
+            tone={Object.keys(fieldErrors).length ? 'danger' : 'info'}
+          >
+            {message}
+          </Alert>
+        </div>
+
+        <ProfileSection
+          description="Informações que ajudam a contextualizar seu trabalho."
+          index={1}
+          title="Apresentação"
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <FormField
+              error={fieldErrors.displayName}
+              hint="Pode ser seu nome social ou profissional."
+              id="display-name"
+              label="Nome de exibição"
+              required
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
@@ -229,13 +277,13 @@ export function CandidateProfileForm() {
                 required
                 value={draft.displayName}
               />
-              <span className="field-help">
-                Pode ser seu nome social ou profissional.
-              </span>
-            </label>
-            <label>
-              Pronomes <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.pronouns}
+              id="pronouns"
+              label={optionalLabel('Pronomes')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={60}
                 onChange={(event) =>
@@ -246,40 +294,44 @@ export function CandidateProfileForm() {
                 }
                 value={draft.pronouns ?? ''}
               />
-            </label>
-            <label className="field-span">
-              Título profissional
-              <input
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              error={fieldErrors.headline}
+              id="headline"
+              label={optionalLabel('Título profissional')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={140}
                 onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    headline: nullable(event.target.value),
-                  })
+                  setDraft({ ...draft, headline: nullable(event.target.value) })
                 }
                 placeholder="Ex.: Desenvolvedora backend"
                 value={draft.headline ?? ''}
               />
-            </label>
-            <label>
-              Localidade <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.location}
+              id="candidate-location"
+              label={optionalLabel('Localidade')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    location: nullable(event.target.value),
-                  })
+                  setDraft({ ...draft, location: nullable(event.target.value) })
                 }
                 placeholder="Cidade, estado ou remoto"
                 value={draft.location ?? ''}
               />
-            </label>
-            <label>
-              Disponibilidade <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors['workPreferences.availability']}
+              id="availability"
+              label={optionalLabel('Disponibilidade')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
@@ -294,10 +346,14 @@ export function CandidateProfileForm() {
                 placeholder="Ex.: Imediata"
                 value={draft.workPreferences.availability ?? ''}
               />
-            </label>
-            <label className="field-span">
-              Bio profissional <span className="optional-mark">Opcional</span>
-              <textarea
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              error={fieldErrors.bio}
+              id="bio"
+              label={optionalLabel('Bio profissional')}
+            >
+              <TextArea
                 disabled={isBusy}
                 maxLength={2000}
                 onChange={(event) =>
@@ -306,22 +362,23 @@ export function CandidateProfileForm() {
                 rows={5}
                 value={draft.bio ?? ''}
               />
-            </label>
+            </FormField>
           </div>
-        </section>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>02</span>
-            <div>
-              <h2>Preferências e habilidades</h2>
-              <p>Dados estruturados para os filtros das próximas fases.</p>
-            </div>
-          </div>
-          <div className="field-grid">
-            <label>
-              Áreas de interesse
-              <input
+        <ProfileSection
+          description="Preferências estruturadas ajudam os filtros sem expor dados além do necessário."
+          index={2}
+          title="Preferências e habilidades"
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <FormField
+              error={fieldErrors['workPreferences.areas']}
+              hint="Separe as áreas por vírgula."
+              id="areas"
+              label="Áreas de interesse"
+            >
+              <TextInput
                 disabled={isBusy}
                 onChange={(event) =>
                   setDraft({
@@ -335,10 +392,14 @@ export function CandidateProfileForm() {
                 placeholder="Tecnologia, Produto, Dados"
                 value={draft.workPreferences.areas.join(', ')}
               />
-            </label>
-            <label>
-              Habilidades
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.skills}
+              hint="Separe as habilidades por vírgula."
+              id="skills"
+              label="Habilidades"
+            >
+              <TextInput
                 disabled={isBusy}
                 onChange={(event) =>
                   setDraft({ ...draft, skills: splitList(event.target.value) })
@@ -346,16 +407,21 @@ export function CandidateProfileForm() {
                 placeholder="NestJS, PostgreSQL, UX"
                 value={draft.skills.join(', ')}
               />
-            </label>
+            </FormField>
           </div>
-          <fieldset className="choice-group">
-            <legend>Modalidade desejada</legend>
-            <div className="choice-grid">
+          <fieldset className="mt-6" disabled={isBusy}>
+            <legend className="text-sm font-extrabold text-vale-ink">
+              Modalidade desejada
+            </legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
               {workModes.map((mode) => (
-                <label className="checkbox-card" key={mode}>
+                <label
+                  className="flex min-h-12 cursor-pointer items-center gap-3 rounded-vale-md border border-vale-border bg-vale-surface px-4 text-sm font-bold text-vale-ink transition hover:border-vale-action has-[:checked]:border-2 has-[:checked]:border-vale-action has-[:checked]:bg-vale-action-subtle"
+                  key={mode}
+                >
                   <input
                     checked={draft.workPreferences.workModes.includes(mode)}
-                    disabled={isBusy}
+                    className="size-4 accent-vale-action"
                     onChange={() => toggleWorkMode(mode)}
                     type="checkbox"
                   />
@@ -364,14 +430,19 @@ export function CandidateProfileForm() {
               ))}
             </div>
           </fieldset>
-          <fieldset className="choice-group">
-            <legend>Regime de trabalho</legend>
-            <div className="choice-grid">
+          <fieldset className="mt-6" disabled={isBusy}>
+            <legend className="text-sm font-extrabold text-vale-ink">
+              Regime de trabalho
+            </legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
               {contractTypes.map((type) => (
-                <label className="checkbox-card" key={type}>
+                <label
+                  className="flex min-h-12 cursor-pointer items-center gap-3 rounded-vale-md border border-vale-border bg-vale-surface px-4 text-sm font-bold text-vale-ink transition hover:border-vale-action has-[:checked]:border-2 has-[:checked]:border-vale-action has-[:checked]:bg-vale-action-subtle"
+                  key={type}
+                >
                   <input
                     checked={draft.workPreferences.contractTypes.includes(type)}
-                    disabled={isBusy}
+                    className="size-4 accent-vale-action"
                     onChange={() => toggleContract(type)}
                     type="checkbox"
                   />
@@ -380,23 +451,22 @@ export function CandidateProfileForm() {
               ))}
             </div>
           </fieldset>
-        </section>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>03</span>
-            <div>
-              <h2>Experiência</h2>
-              <p>Adicione até 15 experiências profissionais.</p>
-            </div>
-          </div>
-          <div className="repeatable-list">
+        <ProfileSection
+          description="Adicione até 15 experiências profissionais."
+          index={3}
+          title="Experiência"
+        >
+          <div className="grid gap-4">
             {draft.experiences.map((experience, index) => (
-              <div className="repeatable-card" key={`experience-${index}`}>
-                <div className="repeatable-heading">
-                  <strong>Experiência {index + 1}</strong>
-                  <button
-                    className="text-action danger-text"
+              <Card className="p-5" key={`experience-${index}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-extrabold text-vale-ink">
+                    Experiência {index + 1}
+                  </h3>
+                  <Button
+                    disabled={isBusy}
                     onClick={() =>
                       setDraft({
                         ...draft,
@@ -405,143 +475,119 @@ export function CandidateProfileForm() {
                         ),
                       })
                     }
-                    type="button"
+                    size="sm"
+                    variant="ghost"
                   >
                     Remover
-                  </button>
+                  </Button>
                 </div>
-                <div className="field-grid">
-                  <label>
-                    Cargo
-                    <input
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  <FormField
+                    error={fieldErrors[`experiences.${index}.title`]}
+                    id={`experience-${index}-title`}
+                    label="Cargo"
+                    required
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, title: event.target.value }
-                                : item,
-                          ),
+                        updateExperience(index, {
+                          title: event.target.value,
                         })
                       }
                       required
                       value={experience.title}
                     />
-                  </label>
-                  <label>
-                    Organização
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`experiences.${index}.organization`]}
+                    id={`experience-${index}-organization`}
+                    label="Organização"
+                    required
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, organization: event.target.value }
-                                : item,
-                          ),
+                        updateExperience(index, {
+                          organization: event.target.value,
                         })
                       }
                       required
                       value={experience.organization}
                     />
-                  </label>
-                  <label>
-                    Início
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`experiences.${index}.startDate`]}
+                    id={`experience-${index}-start`}
+                    label="Início"
+                    required
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? { ...item, startDate: event.target.value }
-                                : item,
-                          ),
-                        })
+                        updateExperience(index, { startDate: event.target.value })
                       }
                       required
                       type="month"
                       value={experience.startDate}
                     />
-                  </label>
-                  <label>
-                    Término
-                    <input
-                      disabled={experience.current}
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`experiences.${index}.endDate`]}
+                    id={`experience-${index}-end`}
+                    label="Término"
+                    required={!experience.current}
+                  >
+                    <TextInput
+                      disabled={isBusy || experience.current}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? {
-                                    ...item,
-                                    endDate: nullable(event.target.value),
-                                  }
-                                : item,
-                          ),
+                        updateExperience(index, {
+                          endDate: nullable(event.target.value),
                         })
                       }
                       required={!experience.current}
                       type="month"
                       value={experience.endDate ?? ''}
                     />
-                  </label>
-                  <label className="checkbox-row field-span">
-                    <input
-                      checked={experience.current}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? {
-                                    ...item,
-                                    current: event.target.checked,
-                                    endDate: event.target.checked
-                                      ? null
-                                      : item.endDate,
-                                  }
-                                : item,
-                          ),
-                        })
-                      }
-                      type="checkbox"
-                    />
-                    Trabalho aqui atualmente
-                  </label>
-                  <label className="field-span">
-                    Descrição <span className="optional-mark">Opcional</span>
-                    <textarea
+                  </FormField>
+                  <CheckboxField
+                    className="md:col-span-2"
+                    disabled={isBusy}
+                    id={`experience-${index}-current`}
+                    label="Trabalho aqui atualmente"
+                    checked={experience.current}
+                    onChange={(event) =>
+                      updateExperience(index, {
+                        current: event.target.checked,
+                        endDate: event.target.checked ? null : experience.endDate,
+                      })
+                    }
+                  />
+                  <FormField
+                    className="md:col-span-2"
+                    error={fieldErrors[`experiences.${index}.description`]}
+                    id={`experience-${index}-description`}
+                    label={optionalLabel('Descrição')}
+                  >
+                    <TextArea
+                      disabled={isBusy}
                       maxLength={1000}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          experiences: draft.experiences.map(
-                            (item, itemIndex) =>
-                              itemIndex === index
-                                ? {
-                                    ...item,
-                                    description: nullable(event.target.value),
-                                  }
-                                : item,
-                          ),
+                        updateExperience(index, {
+                          description: nullable(event.target.value),
                         })
                       }
                       rows={3}
                       value={experience.description ?? ''}
                     />
-                  </label>
+                  </FormField>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
-          <button
-            className="secondary-action"
-            disabled={draft.experiences.length >= 15}
+          <Button
+            className="mt-5"
+            disabled={isBusy || draft.experiences.length >= 15}
             onClick={() =>
               setDraft({
                 ...draft,
@@ -558,27 +604,26 @@ export function CandidateProfileForm() {
                 ],
               })
             }
-            type="button"
+            variant="secondary"
           >
             Adicionar experiência
-          </button>
-        </section>
+          </Button>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>04</span>
-            <div>
-              <h2>Formação e links</h2>
-              <p>Inclua formação acadêmica e referências profissionais.</p>
-            </div>
-          </div>
-          <div className="repeatable-list">
+        <ProfileSection
+          description="Inclua formação acadêmica e referências profissionais."
+          index={4}
+          title="Formação e links"
+        >
+          <div className="grid gap-4">
             {draft.education.map((education, index) => (
-              <div className="repeatable-card" key={`education-${index}`}>
-                <div className="repeatable-heading">
-                  <strong>Formação {index + 1}</strong>
-                  <button
-                    className="text-action danger-text"
+              <Card className="p-5" key={`education-${index}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-extrabold text-vale-ink">
+                    Formação {index + 1}
+                  </h3>
+                  <Button
+                    disabled={isBusy}
                     onClick={() =>
                       setDraft({
                         ...draft,
@@ -587,119 +632,108 @@ export function CandidateProfileForm() {
                         ),
                       })
                     }
-                    type="button"
+                    size="sm"
+                    variant="ghost"
                   >
                     Remover
-                  </button>
+                  </Button>
                 </div>
-                <div className="field-grid">
-                  <label>
-                    Instituição
-                    <input
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  <FormField
+                    error={fieldErrors[`education.${index}.institution`]}
+                    id={`education-${index}-institution`}
+                    label="Instituição"
+                    required
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          education: draft.education.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, institution: event.target.value }
-                              : item,
-                          ),
+                        updateEducation(index, {
+                          institution: event.target.value,
                         })
                       }
                       required
                       value={education.institution}
                     />
-                  </label>
-                  <label>
-                    Curso
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`education.${index}.course`]}
+                    id={`education-${index}-course`}
+                    label="Curso"
+                    required
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          education: draft.education.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, course: event.target.value }
-                              : item,
-                          ),
-                        })
+                        updateEducation(index, { course: event.target.value })
                       }
                       required
                       value={education.course}
                     />
-                  </label>
-                  <label>
-                    Nível <span className="optional-mark">Opcional</span>
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`education.${index}.level`]}
+                    id={`education-${index}-level`}
+                    label={optionalLabel('Nível')}
+                  >
+                    <TextInput
+                      disabled={isBusy}
+                      maxLength={80}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          education: draft.education.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? { ...item, level: nullable(event.target.value) }
-                              : item,
-                          ),
+                        updateEducation(index, {
+                          level: nullable(event.target.value),
                         })
                       }
                       value={education.level ?? ''}
                     />
-                  </label>
-                  <label>
-                    Ano de início{' '}
-                    <span className="optional-mark">Opcional</span>
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`education.${index}.startYear`]}
+                    id={`education-${index}-start-year`}
+                    label={optionalLabel('Ano de início')}
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       max={2200}
                       min={1940}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          education: draft.education.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                  ...item,
-                                  startYear: event.target.value
-                                    ? Number(event.target.value)
-                                    : null,
-                                }
-                              : item,
-                          ),
+                        updateEducation(index, {
+                          startYear: event.target.value
+                            ? Number(event.target.value)
+                            : null,
                         })
                       }
                       type="number"
                       value={education.startYear ?? ''}
                     />
-                  </label>
-                  <label>
-                    Ano de conclusão{' '}
-                    <span className="optional-mark">Opcional</span>
-                    <input
+                  </FormField>
+                  <FormField
+                    error={fieldErrors[`education.${index}.endYear`]}
+                    id={`education-${index}-end-year`}
+                    label={optionalLabel('Ano de conclusão')}
+                  >
+                    <TextInput
+                      disabled={isBusy}
                       max={2200}
                       min={1940}
                       onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          education: draft.education.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                  ...item,
-                                  endYear: event.target.value
-                                    ? Number(event.target.value)
-                                    : null,
-                                }
-                              : item,
-                          ),
+                        updateEducation(index, {
+                          endYear: event.target.value
+                            ? Number(event.target.value)
+                            : null,
                         })
                       }
                       type="number"
                       value={education.endYear ?? ''}
                     />
-                  </label>
+                  </FormField>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
-          <button
-            className="secondary-action"
-            disabled={draft.education.length >= 15}
+          <Button
+            className="mt-5"
+            disabled={isBusy || draft.education.length >= 15}
             onClick={() =>
               setDraft({
                 ...draft,
@@ -715,14 +749,19 @@ export function CandidateProfileForm() {
                 ],
               })
             }
-            type="button"
+            variant="secondary"
           >
             Adicionar formação
-          </button>
-          <label className="standalone-field">
-            Links profissionais{' '}
-            <span className="optional-mark">Um por linha</span>
-            <textarea
+          </Button>
+          <FormField
+            className="mt-6"
+            error={fieldErrors.professionalLinks}
+            hint="Um endereço por linha, até oito links."
+            id="professional-links"
+            label={optionalLabel('Links profissionais')}
+          >
+            <TextArea
+              disabled={isBusy}
               onChange={(event) =>
                 setDraft({
                   ...draft,
@@ -732,29 +771,24 @@ export function CandidateProfileForm() {
                     .filter(Boolean),
                 })
               }
-              placeholder={
-                'https://linkedin.com/in/...\nhttps://github.com/...'
-              }
+              placeholder={'https://linkedin.com/in/...\nhttps://github.com/...'}
               rows={3}
               value={draft.professionalLinks.join('\n')}
             />
-          </label>
-        </section>
+          </FormField>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>05</span>
-            <div>
-              <h2>Arquivos privados</h2>
-              <p>Salve o perfil antes do primeiro envio.</p>
-            </div>
-          </div>
+        <ProfileSection
+          description="O arquivo só fica disponível após uma autorização por recurso. Salve o perfil antes do primeiro envio."
+          index={5}
+          title="Arquivos privados"
+        >
           {profile ? (
-            <div className="asset-grid">
+            <div className="grid gap-4 md:grid-cols-2">
               <ProfileAssetControl
                 accept="image/jpeg,image/png,image/webp"
                 asset={profile.avatar}
-                help="JPEG, PNG ou WebP, até 2 MB."
+                help="JPEG, PNG ou WebP, até 2 MB. O nome do arquivo não é exibido fora do contexto autorizado."
                 kind="avatar"
                 label="Avatar"
                 onChange={(avatar) => setProfile({ ...profile, avatar })}
@@ -762,72 +796,100 @@ export function CandidateProfileForm() {
               <ProfileAssetControl
                 accept="application/pdf"
                 asset={profile.resume}
-                help="PDF válido, até 5 MB."
+                help="PDF válido, até 5 MB. Uma nova versão substitui a atual."
                 kind="resume"
                 label="Currículo"
                 onChange={(resume) => setProfile({ ...profile, resume })}
               />
             </div>
           ) : (
-            <p className="empty-state">
-              Os controles de arquivo aparecem depois que o perfil for salvo.
-            </p>
+            <Alert title="Salve antes de enviar" tone="info">
+              Os controles de arquivo aparecem depois que o perfil for salvo
+              pela primeira vez.
+            </Alert>
           )}
-        </section>
+        </ProfileSection>
 
-        <section className="form-section privacy-section">
-          <div className="form-section-heading">
-            <span>06</span>
-            <div>
-              <h2>Privacidade e ativação</h2>
-              <p>Você pode mudar de ideia a qualquer momento.</p>
-            </div>
-          </div>
-          <div className="visibility-options">
-            {profileVisibilities.map((visibility) => (
-              <label className="visibility-card" key={visibility}>
-                <input
-                  checked={(profile?.visibility ?? 'private') === visibility}
-                  disabled={!profile || isBusy}
+        <ProfileSection
+          description="A escolha só muda quando você a confirma abaixo; salvar outros dados não altera sua visibilidade."
+          index={6}
+          title="Privacidade e ativação"
+        >
+          <fieldset disabled={!profile || isBusy}>
+            <legend className="text-sm font-extrabold text-vale-ink">
+              Quem pode acessar seu perfil
+            </legend>
+            <div className="mt-3 grid gap-3">
+              {profileVisibilities.map((visibility) => (
+                <RadioCard
+                  checked={selectedVisibility === visibility}
+                  description={visibilityCopy[visibility].description}
+                  key={visibility}
+                  label={visibilityCopy[visibility].label}
                   name="visibility"
-                  onChange={() => changeVisibility(visibility)}
-                  type="radio"
+                  onChange={() => void changeVisibility(visibility)}
+                  value={visibility}
                 />
-                <span>
-                  <strong>{visibilityCopy[visibility].label}</strong>
-                  <small>{visibilityCopy[visibility].description}</small>
-                </span>
-              </label>
-            ))}
+              ))}
+            </div>
+          </fieldset>
+          <div aria-live="polite" className="mt-5 rounded-vale-md border border-vale-info/25 bg-vale-info-subtle p-4">
+            <h3 className="font-extrabold text-vale-info-strong">
+              Prévia: {visibilityCopy[selectedVisibility].label}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-vale-info-strong/85">
+              {visibilityCopy[selectedVisibility].preview}
+            </p>
           </div>
-          <label className="activation-control">
-            <input
-              checked={profile?.isActive ?? true}
-              disabled={!profile || isBusy}
-              onChange={(event) => changeActivation(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              <strong>Perfil ativo</strong>
-              <small>
-                Desative para impedir qualquer acesso de contratantes sem apagar
-                sua trajetória.
-              </small>
-            </span>
-          </label>
-        </section>
+          {!profile ? (
+            <p className="mt-4 text-sm leading-6 text-vale-muted">
+              Salve o perfil para poder escolher uma regra de visibilidade.
+            </p>
+          ) : null}
+          <CheckboxField
+            className="mt-6 rounded-vale-md border border-vale-border bg-vale-neutral-subtle p-4"
+            checked={profile?.isActive ?? true}
+            disabled={!profile || isBusy}
+            hint="Desativar impede qualquer acesso de contratantes sem apagar sua trajetória, arquivos ou conta."
+            id="profile-active"
+            label="Perfil ativo"
+            onChange={(event) => void changeActivation(event.target.checked)}
+          />
+          <Alert className="mt-6" title="Ações diferentes, consequências diferentes" tone="warning">
+            Remover um arquivo apaga apenas aquela versão. Desativar o perfil
+            interrompe o acesso de contratantes e pode ser revertido. Excluir a
+            conta não está disponível nesta tela.
+          </Alert>
+        </ProfileSection>
 
-        <div className="form-footer">
-          <p className="profile-message" role="status">
-            {message}
-          </p>
-          <button className="primary-action" disabled={isBusy} type="submit">
-            {isBusy ? 'Aguarde…' : 'Salvar perfil'}
-          </button>
-        </div>
+        <ProfileSaveBar isSaving={isBusy} message={message} submitLabel="Salvar perfil" />
       </form>
-    </div>
+    </ProfileEditorLayout>
   );
+
+  function updateExperience(
+    index: number,
+    updates: Partial<CandidateProfileInput['experiences'][number]>,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      experiences: current.experiences.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...updates } : item,
+      ),
+    }));
+  }
+
+  function updateEducation(
+    index: number,
+    updates: Partial<CandidateProfileInput['education'][number]>,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      education: current.education.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...updates } : item,
+      ),
+    }));
+  }
 }
 
 function emptyCandidate(): CandidateProfileInput {
@@ -867,7 +929,7 @@ function toCandidateInput(profile: CandidateProfile): CandidateProfileInput {
 
 function nullable(value: string): string | null {
   const clean = value.trim();
-  return clean ? value : null;
+  return clean ? clean : null;
 }
 
 function splitList(value: string): string[] {
@@ -881,4 +943,24 @@ function toggle<T>(values: T[], value: T): T[] {
   return values.includes(value)
     ? values.filter((candidate) => candidate !== value)
     : [...values, value];
+}
+
+function optionalLabel(label: string) {
+  return (
+    <>
+      {label}{' '}
+      <span className="font-semibold text-vale-muted">(opcional)</span>
+    </>
+  );
+}
+
+function toFieldErrors(
+  issues: Array<{ message: string; path: PropertyKey[] }>,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const path = issue.path.join('.');
+    if (!errors[path]) errors[path] = issue.message;
+  }
+  return errors;
 }

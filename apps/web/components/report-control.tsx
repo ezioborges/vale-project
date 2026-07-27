@@ -5,6 +5,11 @@ import { FormEvent, useState } from 'react';
 
 import { ApiRequestError, createReport } from '@/lib/api';
 
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Alert } from './ui/feedback';
+import { FormField, Select, TextArea } from './ui/form-field';
+
 const reasonLabels: Record<ReportReason, string> = {
   discrimination: 'Discriminação',
   harassment: 'Assédio ou intimidação',
@@ -31,7 +36,7 @@ export function ReportControl({
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSending(true);
     setMessage('');
@@ -56,65 +61,86 @@ export function ReportControl({
 
   if (!open) {
     return (
-      <button
-        className="report-link"
-        type="button"
-        onClick={() => setOpen(true)}
-      >
+      <Button onClick={() => setOpen(true)} size="sm" variant="ghost">
         {label}
-      </button>
+      </Button>
     );
   }
 
   return (
-    <form className="report-form" onSubmit={submit}>
-      <div className="editor-heading">
-        <strong>Denúncia confidencial para a equipe</strong>
-        {!sent && (
-          <button
-            className="text-action"
-            type="button"
-            onClick={() => setOpen(false)}
-          >
+    <Card
+      as="form"
+      className="grid gap-5 border-vale-danger/25 bg-vale-danger-subtle p-5"
+      onSubmit={submit}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="font-extrabold text-vale-ink">
+            Denúncia confidencial para a equipe
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-vale-muted">
+            Descreva apenas fatos necessários. Não inclua senhas, documentos ou
+            dados de outras pessoas que não sejam essenciais ao relato.
+          </p>
+        </div>
+        {!sent ? (
+          <Button onClick={() => setOpen(false)} size="sm" variant="ghost">
             Fechar
-          </button>
-        )}
+          </Button>
+        ) : null}
       </div>
-      {!sent && (
+      {!sent ? (
         <>
-          <label>
-            Motivo
-            <select
-              value={reason}
+          <FormField id={`report-reason-${targetId}`} label="Motivo" required>
+            <Select
               onChange={(event) =>
                 setReason(event.target.value as ReportReason)
               }
+              value={reason}
             >
               {Object.entries(reasonLabels).map(([value, text]) => (
                 <option key={value} value={value}>
                   {text}
                 </option>
               ))}
-            </select>
-          </label>
-          <label>
-            O que aconteceu?
-            <textarea
-              required
-              minLength={20}
+            </Select>
+          </FormField>
+          <FormField
+            hint="Mínimo de 20 caracteres."
+            id={`report-description-${targetId}`}
+            label="O que aconteceu?"
+            required
+          >
+            <TextArea
+              disabled={sending}
               maxLength={2000}
+              minLength={20}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Descreva fatos, contexto e o trecho que precisa ser analisado."
+              required
               rows={6}
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Descreva fatos, contexto e o trecho que precisa ser analisado. Não inclua senhas ou documentos."
             />
-          </label>
-          <button className="danger-action" disabled={sending}>
-            {sending ? 'Registrando…' : 'Enviar denúncia'}
-          </button>
+          </FormField>
+          <Button
+            fullWidth
+            loading={sending}
+            loadingLabel="Registrando denúncia"
+            type="submit"
+            variant="danger"
+          >
+            Enviar denúncia
+          </Button>
         </>
-      )}
-      {message && <p className="notice">{message}</p>}
-    </form>
+      ) : null}
+      {message ? (
+        <Alert
+          title={sent ? 'Denúncia registrada' : 'Não foi possível enviar'}
+          tone={sent ? 'success' : 'danger'}
+        >
+          {message}
+        </Alert>
+      ) : null}
+    </Card>
   );
 }

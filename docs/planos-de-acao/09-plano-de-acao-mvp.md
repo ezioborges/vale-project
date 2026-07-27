@@ -31,9 +31,9 @@ Por isso, o MVP não deve ser tratado apenas como um portal de vagas. O núcleo 
 | 3 — Vagas, busca e candidaturas | Concluída | endurecimento para piloto |
 | 4 — Denúncias, administração e auditoria | Concluída | piloto fechado, E2E e operação |
 
-As evidências e pendências detalhadas ficam em [`requirements/`](requirements/README.md). Os
+As evidências e pendências detalhadas ficam em [`requirements/`](../requirements/README.md). Os
 procedimentos reproduzíveis de setup, ambientes e segurança ficam em
-[`runbooks/`](runbooks/README.md).
+[`runbooks/`](../runbooks/README.md).
 
 ## Decisoes imediatas
 

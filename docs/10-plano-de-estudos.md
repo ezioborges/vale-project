@@ -1,6 +1,6 @@
 # Plano de Estudos para Desenvolver o Vale Project
 
-Este plano acompanha o `09-plano-de-acao.md` e explica o que estudar para entender cada decisao tecnica antes de implementar a proxima fatia do MVP.
+Este plano acompanha o `planos-de-acao/09-plano-de-acao-mvp.md` e explica o que estudar para entender cada decisao tecnica antes de implementar a proxima fatia do MVP.
 
 ## Como usar
 

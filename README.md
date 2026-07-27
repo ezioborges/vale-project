@@ -78,12 +78,12 @@ lockfile e exceções temporárias.
 | [docs/06-seguranca-e-lgpd.md](docs/06-seguranca-e-lgpd.md)                               | Diretrizes de seguranca, privacidade e LGPD.                     |
 | [docs/07-testes-e-qualidade.md](docs/07-testes-e-qualidade.md)                           | Estrategia inicial de testes e qualidade.                        |
 | [docs/08-backlog-e-roadmap.md](docs/08-backlog-e-roadmap.md)                             | Epicos, historias candidatas e roadmap do MVP.                   |
-| [docs/09-plano-de-acao.md](docs/09-plano-de-acao.md)                                     | Sequencia pratica de desenvolvimento do MVP.                     |
+| [docs/planos-de-acao/09-plano-de-acao-mvp.md](docs/planos-de-acao/09-plano-de-acao-mvp.md) | Sequencia pratica de desenvolvimento do MVP.                     |
 | [docs/10-plano-de-estudos.md](docs/10-plano-de-estudos.md)                               | Plano de estudos para entender as decisoes tecnicas.             |
 | [docs/11-estudo-pnpm-workspaces.md](docs/11-estudo-pnpm-workspaces.md)                   | Estudo sobre a organizacao e os comandos do monorepo.            |
-| [docs/12-plano-aplicacao-design.md](docs/12-plano-aplicacao-design.md)                   | Sequencia de adocao do design system na interface.               |
-| [docs/13-plano-melhorias-seguranca-fluxo.md](docs/13-plano-melhorias-seguranca-fluxo.md) | Analise priorizada de seguranca, fluxo e operacao.               |
-| [docs/14-plano-acao-etapa-0.md](docs/14-plano-acao-etapa-0.md)                           | Execucao detalhada de baseline, CI e dependencias.               |
+| [docs/planos-de-acao/12-plano-aplicacao-design.md](docs/planos-de-acao/12-plano-aplicacao-design.md) | Sequencia de adocao do design system na interface.               |
+| [docs/planos-de-acao/13-plano-melhorias-seguranca-fluxo.md](docs/planos-de-acao/13-plano-melhorias-seguranca-fluxo.md) | Analise priorizada de seguranca, fluxo e operacao.               |
+| [docs/planos-de-acao/etapas/14-plano-acao-etapa-0.md](docs/planos-de-acao/etapas/14-plano-acao-etapa-0.md) | Execucao detalhada de baseline, CI e dependencias.               |
 | [docs/15-execucao-etapa-1.md](docs/15-execucao-etapa-1.md)                               | Fronteira HTTP, sessao, CSRF, headers e topologia segura.        |
 | [docs/requirements/README.md](docs/requirements/README.md)                               | Estado verificado, evidencias e pendencias por fase.             |
 | [docs/runbooks/README.md](docs/runbooks/README.md)                                       | Procedimentos de setup, ambientes e seguranca.                   |

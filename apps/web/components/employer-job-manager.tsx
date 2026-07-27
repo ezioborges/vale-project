@@ -1,17 +1,16 @@
 'use client';
 
+import { faFileArrowDown, faUsers } from '@fortawesome/free-solid-svg-icons';
 import {
   jobInputSchema,
-  type ApplicationStatus,
   type ContractType,
   type JobInput,
   type JobSeniority,
-  type JobStatus,
   type ManagedJob,
   type ReceivedApplication,
   type WorkMode,
 } from '@vale/shared';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   ApiRequestError,
@@ -24,41 +23,51 @@ import {
   updateJob,
 } from '@/lib/api';
 
-const statusLabels: Record<JobStatus, string> = {
-  draft: 'Rascunho',
-  pending_review: 'Em moderação',
-  changes_requested: 'Ajustes solicitados',
-  approved: 'Publicada',
-  rejected: 'Rejeitada',
-  paused: 'Pausada',
-  closed: 'Encerrada',
-  reported: 'Sinalizada',
-};
-
-const applicationStatusLabels: Record<ApplicationStatus, string> = {
-  submitted: 'Recebida',
-  under_review: 'Em análise',
-  shortlisted: 'Próxima etapa',
-  rejected: 'Encerrada',
-  cancelled: 'Cancelada',
-};
+import {
+  applicationStatusLabels,
+  contractLabels,
+  JobMetadata,
+  jobStatusGuidance,
+  JobStatusBadge,
+  seniorityLabels,
+  workModeLabels,
+  ApplicationStatusBadge,
+} from './market-status';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Dialog } from './ui/dialog';
+import { Alert, EmptyState, LoadingState } from './ui/feedback';
+import {
+  CheckboxField,
+  FormField,
+  Select,
+  TextArea,
+  TextInput,
+} from './ui/form-field';
+import { Icon } from './ui/icon';
+import { PageHeading } from './ui/page-heading';
 
 type JobFormState = {
-  title: string;
-  area: string;
-  description: string;
-  responsibilities: string;
-  requirements: string;
-  benefits: string;
-  location: string;
-  workMode: WorkMode;
-  contractType: ContractType;
-  seniority: JobSeniority;
-  salaryMin: string;
-  salaryMax: string;
-  salaryHiddenReason: string;
   accessibilityInfo: string;
+  area: string;
+  benefits: string;
+  contractType: ContractType;
+  description: string;
   inclusionCommitment: boolean;
+  location: string;
+  requirements: string;
+  responsibilities: string;
+  salaryHiddenReason: string;
+  salaryMax: string;
+  salaryMin: string;
+  seniority: JobSeniority;
+  title: string;
+  workMode: WorkMode;
+};
+
+type Feedback = {
+  message: string;
+  tone: 'danger' | 'success';
 };
 
 const emptyForm: JobFormState = {
@@ -83,39 +92,44 @@ export function EmployerJobManager() {
   const [jobs, setJobs] = useState<ManagedJob[]>([]);
   const [form, setForm] = useState<JobFormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedJob, setSelectedJob] = useState<ManagedJob | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [applications, setApplications] = useState<ReceivedApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [pendingJob, setPendingJob] = useState<JobInput | null>(null);
+  const [reviewError, setReviewError] = useState('');
+  const [pendingClose, setPendingClose] = useState<ManagedJob | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  const selectedJob = useMemo(
+    () => jobs.find((job) => job.id === selectedJobId) ?? null,
+    [jobs, selectedJobId],
+  );
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
-    setMessage('');
     try {
-      const result = await listMyJobs();
-      setJobs(result.items);
-      if (selectedJob) {
-        setSelectedJob(
-          result.items.find((job) => job.id === selectedJob.id) ?? null,
-        );
-      }
+      setJobs((await listMyJobs()).items);
     } catch (error) {
-      setMessage(
-        error instanceof ApiRequestError
-          ? error.message
-          : 'Não foi possível carregar suas vagas.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof ApiRequestError
+            ? error.message
+            : 'Não foi possível carregar suas vagas.',
+      });
     } finally {
       setLoading(false);
     }
-  }, [selectedJob]);
+  }, []);
 
   useEffect(() => {
     void loadJobs();
-  }, []);
+  }, [loadJobs]);
 
-  function input(): JobInput | null {
+  function jobInput(): JobInput | null {
     const parsed = jobInputSchema.safeParse({
       title: form.title,
       area: form.area,
@@ -134,31 +148,46 @@ export function EmployerJobManager() {
       inclusionCommitment: form.inclusionCommitment,
     });
     if (!parsed.success) {
-      setMessage(parsed.error.issues.map((issue) => issue.message).join(' '));
+      setFeedback({
+        tone: 'danger',
+        message: parsed.error.issues.map((issue) => issue.message).join(' '),
+      });
       return null;
     }
     return parsed.data;
   }
 
-  async function submit(event: FormEvent) {
+  function reviewJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const payload = input();
+    const payload = jobInput();
     if (!payload) return;
+    setReviewError('');
+    setPendingJob(payload);
+  }
+
+  async function saveJob() {
+    if (!pendingJob) return;
+
     setSaving(true);
-    setMessage('');
+    setReviewError('');
     try {
       if (editingId) {
-        await updateJob(editingId, payload);
-        setMessage('Vaga atualizada e reenviada para moderação.');
+        await updateJob(editingId, pendingJob);
       } else {
-        await createJob(payload);
-        setMessage('Vaga enviada para moderação. Ela ainda não está pública.');
+        await createJob(pendingJob);
       }
       setEditingId(null);
       setForm(emptyForm);
+      setPendingJob(null);
       await loadJobs();
+      setFeedback({
+        tone: 'success',
+        message: editingId
+          ? 'Vaga atualizada e reenviada para moderação.'
+          : 'Vaga enviada para moderação. Ela ainda não está pública.',
+      });
     } catch (error) {
-      setMessage(
+      setReviewError(
         error instanceof ApiRequestError
           ? error.message
           : 'Não foi possível salvar a vaga.',
@@ -187,37 +216,62 @@ export function EmployerJobManager() {
       accessibilityInfo: job.accessibilityInfo ?? '',
       inclusionCommitment: true,
     });
-    document.getElementById('job-form')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('job-form')?.scrollIntoView({ behavior: 'auto' });
   }
 
   async function runTransition(
     job: ManagedJob,
     action: 'pause' | 'resume' | 'close' | 'republish',
   ) {
-    setMessage('');
     try {
       await transitionJob(job.id, action);
-      setMessage('Estado da vaga atualizado.');
       await loadJobs();
+      setFeedback({ tone: 'success', message: 'Estado da vaga atualizado.' });
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : 'Falha na transição.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message: error instanceof Error ? error.message : 'Falha na transição.',
+      });
+    }
+  }
+
+  async function confirmClose() {
+    if (!pendingClose) return;
+
+    setClosing(true);
+    try {
+      await transitionJob(pendingClose.id, 'close');
+      setPendingClose(null);
+      await loadJobs();
+      setFeedback({ tone: 'success', message: 'Vaga encerrada.' });
+    } catch (error) {
+      setPendingClose(null);
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof Error ? error.message : 'Falha ao encerrar a vaga.',
+      });
+    } finally {
+      setClosing(false);
     }
   }
 
   async function openApplications(job: ManagedJob) {
-    setSelectedJob(job);
+    setSelectedJobId(job.id);
     setApplications([]);
-    setMessage('');
+    setApplicationsLoading(true);
     try {
       setApplications((await listReceivedApplications(job.id)).items);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : 'Falha ao carregar candidaturas.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Falha ao carregar candidaturas.',
+      });
+    } finally {
+      setApplicationsLoading(false);
     }
   }
 
@@ -225,15 +279,19 @@ export function EmployerJobManager() {
     application: ReceivedApplication,
     status: 'under_review' | 'shortlisted' | 'rejected',
   ) {
-    setMessage('');
     try {
       await updateApplicationStatus(application.id, status);
       if (selectedJob) await openApplications(selectedJob);
-      setMessage('Status da candidatura atualizado.');
+      setFeedback({
+        tone: 'success',
+        message: 'Status da candidatura atualizado.',
+      });
     } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : 'Falha na atualização.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof Error ? error.message : 'Falha na atualização.',
+      });
     }
   }
 
@@ -241,429 +299,557 @@ export function EmployerJobManager() {
     setForm((current) => ({ ...current, [key]: value }));
 
   return (
-    <section className="management-page employer-management">
-      <div className="management-hero">
-        <span className="eyebrow">Gestão de oportunidades</span>
-        <h1>Vagas e candidaturas</h1>
-        <p>
-          Toda criação ou edição de conteúdo volta à moderação. Pausar não
-          altera o texto aprovado; republicar uma vaga encerrada exige nova
-          revisão.
-        </p>
-      </div>
+    <section className="mx-auto max-w-vale-wide">
+      <PageHeading
+        as="h1"
+        description="Toda criação ou edição de conteúdo volta à moderação. Pausar não altera o texto aprovado; republicar uma vaga encerrada exige nova revisão."
+        eyebrow="Gestão de oportunidades"
+        title="Vagas e candidaturas"
+      />
 
-      {message && (
-        <p className="notice" role="status">
-          {message}
-        </p>
-      )}
+      {feedback ? (
+        <Alert
+          className="mt-6"
+          title={
+            feedback.tone === 'success'
+              ? 'Alteração confirmada'
+              : 'Não foi possível concluir'
+          }
+          tone={feedback.tone}
+        >
+          {feedback.message}
+        </Alert>
+      ) : null}
 
-      <div className="management-grid">
-        <form className="job-editor" id="job-form" onSubmit={submit}>
-          <div className="editor-heading">
+      <div className="mt-8 grid items-start gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(21rem,0.75fr)]">
+        <Card
+          as="form"
+          className="grid gap-6 p-5 sm:p-7"
+          id="job-form"
+          noValidate
+          onSubmit={reviewJob}
+        >
+          <div className="flex flex-col gap-3 border-b border-vale-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <span className="eyebrow">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-vale-action">
                 {editingId ? 'Nova versão' : 'Nova vaga'}
-              </span>
-              <h2>
-                {editingId ? 'Corrigir e reenviar' : 'Enviar para moderação'}
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-vale-ink">
+                {editingId ? 'Corrigir e reenviar' : 'Preparar para moderação'}
               </h2>
             </div>
-            {editingId && (
-              <button
-                className="text-action"
-                type="button"
+            {editingId ? (
+              <Button
                 onClick={() => {
                   setEditingId(null);
                   setForm(emptyForm);
                 }}
+                size="sm"
+                variant="ghost"
               >
                 Cancelar edição
-              </button>
-            )}
+              </Button>
+            ) : null}
           </div>
 
-          <div className="field-grid">
-            <label>
-              Título
-              <input
-                required
-                minLength={3}
+          <div className="grid gap-5 md:grid-cols-2">
+            <FormField id="job-title" label="Título" required>
+              <TextInput
                 maxLength={160}
-                value={form.title}
+                minLength={3}
                 onChange={(event) => set('title', event.target.value)}
-              />
-            </label>
-            <label>
-              Área
-              <input
                 required
+                value={form.title}
+              />
+            </FormField>
+            <FormField id="job-area" label="Área" required>
+              <TextInput
                 maxLength={100}
-                value={form.area}
                 onChange={(event) => set('area', event.target.value)}
                 placeholder="Ex.: Tecnologia"
-              />
-            </label>
-            <label className="field-span">
-              Descrição
-              <textarea
                 required
-                minLength={50}
+                value={form.area}
+              />
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              hint="Texto simples. Não inclua dados pessoais de terceiros."
+              id="job-description"
+              label="Descrição"
+              required
+            >
+              <TextArea
                 maxLength={5000}
+                minLength={50}
+                onChange={(event) => set('description', event.target.value)}
+                required
                 rows={7}
                 value={form.description}
-                onChange={(event) => set('description', event.target.value)}
               />
-              <small className="field-help">
-                Texto simples. Não inclua dados pessoais de terceiros.
-              </small>
-            </label>
-            <label className="field-span">
-              Responsabilidades <span className="optional-mark">opcional</span>
-              <textarea
-                rows={4}
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              id="job-responsibilities"
+              label="Responsabilidades (opcional)"
+            >
+              <TextArea
                 maxLength={3000}
-                value={form.responsibilities}
                 onChange={(event) =>
                   set('responsibilities', event.target.value)
                 }
-              />
-            </label>
-            <label className="field-span">
-              Requisitos <span className="optional-mark">opcional</span>
-              <textarea
                 rows={4}
+                value={form.responsibilities}
+              />
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              id="job-requirements"
+              label="Requisitos (opcional)"
+            >
+              <TextArea
                 maxLength={3000}
-                value={form.requirements}
                 onChange={(event) => set('requirements', event.target.value)}
+                rows={4}
+                value={form.requirements}
               />
-            </label>
-            <label className="field-span">
-              Benefícios <span className="optional-mark">opcional</span>
-              <textarea
-                rows={3}
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              id="job-benefits"
+              label="Benefícios (opcional)"
+            >
+              <TextArea
                 maxLength={2000}
-                value={form.benefits}
                 onChange={(event) => set('benefits', event.target.value)}
+                rows={3}
+                value={form.benefits}
               />
-            </label>
-            <label>
-              Localidade
-              <input
-                required
+            </FormField>
+            <FormField id="job-location" label="Localidade" required>
+              <TextInput
                 maxLength={120}
-                value={form.location}
                 onChange={(event) => set('location', event.target.value)}
+                required
+                value={form.location}
               />
-            </label>
-            <label>
-              Modalidade
-              <select
-                value={form.workMode}
+            </FormField>
+            <FormField id="job-work-mode" label="Modalidade" required>
+              <Select
                 onChange={(event) =>
                   set('workMode', event.target.value as WorkMode)
                 }
+                value={form.workMode}
               >
-                <option value="remote">Remoto</option>
-                <option value="hybrid">Híbrido</option>
-                <option value="onsite">Presencial</option>
-              </select>
-            </label>
-            <label>
-              Contrato
-              <select
-                value={form.contractType}
+                {Object.entries(workModeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="job-contract" label="Contrato" required>
+              <Select
                 onChange={(event) =>
                   set('contractType', event.target.value as ContractType)
                 }
+                value={form.contractType}
               >
-                <option value="clt">CLT</option>
-                <option value="pj">PJ</option>
-                <option value="internship">Estágio</option>
-                <option value="temporary">Temporário</option>
-                <option value="freelance">Freelance</option>
-                <option value="other">Outro</option>
-              </select>
-            </label>
-            <label>
-              Senioridade
-              <select
-                value={form.seniority}
+                {Object.entries(contractLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="job-seniority" label="Senioridade" required>
+              <Select
                 onChange={(event) =>
                   set('seniority', event.target.value as JobSeniority)
                 }
+                value={form.seniority}
               >
-                <option value="intern">Estágio</option>
-                <option value="junior">Júnior</option>
-                <option value="mid">Pleno</option>
-                <option value="senior">Sênior</option>
-                <option value="lead">Liderança</option>
-                <option value="specialist">Especialista</option>
-                <option value="not_applicable">Não se aplica</option>
-              </select>
-            </label>
-            <label>
-              Salário mínimo (R$)
-              <input
-                type="number"
+                {Object.entries(seniorityLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField id="job-salary-min" label="Salário mínimo (R$)">
+              <TextInput
                 min="0"
-                step="1"
-                value={form.salaryMin}
                 onChange={(event) => set('salaryMin', event.target.value)}
-              />
-            </label>
-            <label>
-              Salário máximo (R$)
-              <input
-                type="number"
-                min="0"
                 step="1"
-                value={form.salaryMax}
-                onChange={(event) => set('salaryMax', event.target.value)}
+                type="number"
+                value={form.salaryMin}
               />
-            </label>
-            <label className="field-span">
-              Justificativa se a faixa não for informada
-              <input
+            </FormField>
+            <FormField id="job-salary-max" label="Salário máximo (R$)">
+              <TextInput
+                min="0"
+                onChange={(event) => set('salaryMax', event.target.value)}
+                step="1"
+                type="number"
+                value={form.salaryMax}
+              />
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              hint="Informe apenas se não houver faixa salarial."
+              id="job-salary-hidden-reason"
+              label="Justificativa para não informar a faixa"
+            >
+              <TextInput
                 maxLength={300}
-                value={form.salaryHiddenReason}
                 onChange={(event) =>
                   set('salaryHiddenReason', event.target.value)
                 }
+                value={form.salaryHiddenReason}
               />
-            </label>
-            <label className="field-span">
-              Acessibilidade e adaptações{' '}
-              <span className="optional-mark">opcional</span>
-              <textarea
-                rows={3}
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              id="job-accessibility"
+              label="Acessibilidade e adaptações (opcional)"
+            >
+              <TextArea
                 maxLength={1000}
-                value={form.accessibilityInfo}
                 onChange={(event) =>
                   set('accessibilityInfo', event.target.value)
                 }
+                rows={3}
+                value={form.accessibilityInfo}
               />
-            </label>
+            </FormField>
           </div>
-          <label className="inclusion-confirmation">
-            <input
-              type="checkbox"
-              checked={form.inclusionCommitment}
-              onChange={(event) =>
-                set('inclusionCommitment', event.target.checked)
-              }
-            />
-            <span>
-              <strong>Confirmo o compromisso inclusivo da oportunidade.</strong>
-              <small>
-                A vaga respeita as diretrizes da comunidade e não contém
-                critérios discriminatórios.
-              </small>
-            </span>
-          </label>
-          <button className="primary-action" disabled={saving}>
-            {saving
-              ? 'Enviando…'
-              : editingId
-                ? 'Reenviar para moderação'
-                : 'Enviar vaga para moderação'}
-          </button>
-        </form>
 
-        <div className="managed-jobs">
-          <div className="editor-heading">
+          <CheckboxField
+            checked={form.inclusionCommitment}
+            hint="A vaga respeita as diretrizes da comunidade e não contém critérios discriminatórios."
+            id="job-inclusion-commitment"
+            label="Confirmo o compromisso inclusivo da oportunidade."
+            onChange={(event) =>
+              set('inclusionCommitment', event.target.checked)
+            }
+            required
+          />
+          <Button fullWidth type="submit">
+            {editingId ? 'Revisar atualização' : 'Revisar vaga'}
+          </Button>
+        </Card>
+
+        <Card className="grid gap-6 p-5 sm:p-7">
+          <div className="flex flex-col gap-2 border-b border-vale-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <span className="eyebrow">Portfólio de vagas</span>
-              <h2>Minhas oportunidades</h2>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-vale-action">
+                Portfólio de vagas
+              </p>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-vale-ink">
+                Minhas oportunidades
+              </h2>
             </div>
-            <span>{jobs.length} registradas</span>
+            <p className="text-sm font-bold text-vale-muted">
+              {jobs.length} registradas
+            </p>
           </div>
 
-          {loading && <div className="empty-state-card">Carregando vagas…</div>}
-          {!loading && jobs.length === 0 && (
-            <div className="empty-state-card">
-              <strong>Você ainda não enviou vagas.</strong>
-              <span>Use o formulário para iniciar a primeira moderação.</span>
-            </div>
-          )}
-          <div className="managed-job-list">
+          {loading ? <LoadingState label="Carregando vagas" /> : null}
+          {!loading && jobs.length === 0 ? (
+            <EmptyState
+              description="Use o formulário para iniciar a primeira moderação."
+              title="Você ainda não enviou vagas"
+            />
+          ) : null}
+          <div className="grid gap-4">
             {jobs.map((job) => (
-              <article className="managed-job-card" key={job.id}>
-                <div className="managed-job-heading">
-                  <span className={`status-badge status-${job.status}`}>
-                    {statusLabels[job.status]}
-                  </span>
-                  <h3>{job.title}</h3>
-                  <p>
-                    {job.area} · {job.location}
+              <Card className="grid gap-5 p-5" key={job.id}>
+                <div>
+                  <JobStatusBadge status={job.status} />
+                  <h3 className="mt-3 text-lg font-black tracking-[-0.03em] text-vale-ink">
+                    {job.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-vale-muted">
+                    {jobStatusGuidance[job.status]}
                   </p>
+                  <JobMetadata
+                    className="mt-4"
+                    contractType={job.contractType}
+                    location={job.location}
+                    seniority={job.seniority}
+                    workMode={job.workMode}
+                  />
                 </div>
-                {job.moderationReason && (
-                  <div className="moderation-reason">
-                    <strong>Retorno da moderação</strong>
-                    <p>{job.moderationReason}</p>
-                  </div>
-                )}
-                <div className="inline-actions">
-                  {['changes_requested', 'approved'].includes(job.status) && (
-                    <button
-                      className="secondary-action"
+                {job.moderationReason ? (
+                  <Alert title="Retorno da moderação" tone="warning">
+                    {job.moderationReason}
+                  </Alert>
+                ) : null}
+                <div className="flex flex-wrap gap-3 border-t border-vale-border pt-5">
+                  {['changes_requested', 'approved'].includes(job.status) ? (
+                    <Button
                       onClick={() => startEditing(job)}
+                      variant="secondary"
                     >
                       Editar
-                    </button>
-                  )}
-                  {job.status === 'approved' && (
-                    <button
-                      className="secondary-action"
+                    </Button>
+                  ) : null}
+                  {job.status === 'approved' ? (
+                    <Button
                       onClick={() => void runTransition(job, 'pause')}
+                      variant="secondary"
                     >
                       Pausar
-                    </button>
-                  )}
-                  {job.status === 'paused' && (
-                    <button
-                      className="secondary-action"
+                    </Button>
+                  ) : null}
+                  {job.status === 'paused' ? (
+                    <Button
                       onClick={() => void runTransition(job, 'resume')}
+                      variant="secondary"
                     >
                       Retomar
-                    </button>
-                  )}
-                  {['approved', 'paused'].includes(job.status) && (
-                    <button
-                      className="danger-action"
-                      onClick={() => void runTransition(job, 'close')}
+                    </Button>
+                  ) : null}
+                  {['approved', 'paused'].includes(job.status) ? (
+                    <Button
+                      onClick={() => setPendingClose(job)}
+                      variant="danger"
                     >
                       Encerrar
-                    </button>
-                  )}
-                  {job.status === 'closed' && (
-                    <button
-                      className="secondary-action"
+                    </Button>
+                  ) : null}
+                  {job.status === 'closed' ? (
+                    <Button
                       onClick={() => void runTransition(job, 'republish')}
+                      variant="secondary"
                     >
                       Republicar
-                    </button>
-                  )}
-                  <button
-                    className="text-action"
+                    </Button>
+                  ) : null}
+                  <Button
                     onClick={() => void openApplications(job)}
+                    variant="ghost"
                   >
+                    <Icon icon={faUsers} />
                     Ver candidaturas
-                  </button>
+                  </Button>
                 </div>
-              </article>
+              </Card>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
 
-      {selectedJob && (
-        <section className="received-section">
-          <div className="editor-heading">
+      {selectedJob ? (
+        <section
+          className="mt-8 border-t border-vale-border pt-8"
+          aria-labelledby="received-applications-heading"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <span className="eyebrow">Processo seletivo</span>
-              <h2>Candidaturas para {selectedJob.title}</h2>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-vale-action">
+                Processo seletivo
+              </p>
+              <h2
+                className="mt-2 text-2xl font-black tracking-[-0.04em] text-vale-ink"
+                id="received-applications-heading"
+              >
+                Candidaturas para {selectedJob.title}
+              </h2>
             </div>
-            <button
-              className="text-action"
+            <Button
               onClick={() => {
-                setSelectedJob(null);
+                setSelectedJobId(null);
                 setApplications([]);
               }}
+              variant="ghost"
             >
               Fechar
-            </button>
+            </Button>
           </div>
-          {applications.length === 0 ? (
-            <div className="empty-state-card">
-              Nenhuma candidatura recebida para esta vaga.
+          {applicationsLoading ? (
+            <div className="mt-6">
+              <LoadingState label="Carregando candidaturas" />
             </div>
-          ) : (
-            <div className="received-grid">
-              {applications.map((application) => (
-                <article className="received-card" key={application.id}>
-                  <span className={`status-badge status-${application.status}`}>
-                    {applicationStatusLabels[application.status]}
-                  </span>
-                  <h3>
+          ) : null}
+          {!applicationsLoading && applications.length === 0 ? (
+            <div className="mt-6">
+              <EmptyState
+                description="Novas candidaturas aparecerão aqui e poderão ser tratadas conforme as transições permitidas."
+                title="Nenhuma candidatura recebida"
+              />
+            </div>
+          ) : null}
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            {applications.map((application) => (
+              <Card
+                className="grid content-start gap-5 p-5"
+                key={application.id}
+              >
+                <div>
+                  <ApplicationStatusBadge status={application.status} />
+                  <h3 className="mt-3 text-xl font-black tracking-[-0.03em] text-vale-ink">
                     {application.candidate?.displayName ??
                       'Dados removidos após cancelamento'}
                   </h3>
-                  {application.candidate && (
-                    <p>
+                  {application.candidate ? (
+                    <p className="mt-2 text-sm leading-6 text-vale-muted">
                       {application.candidate.headline ?? 'Título não informado'}
                       {application.candidate.location
                         ? ` · ${application.candidate.location}`
                         : ''}
                     </p>
-                  )}
-                  {application.candidate &&
-                    application.candidate.skills.length > 0 && (
-                      <div className="tag-list">
-                        {application.candidate.skills.map((skill) => (
-                          <span key={skill}>{skill}</span>
-                        ))}
-                      </div>
-                    )}
-                  {application.coverMessage &&
-                    application.status !== 'cancelled' && (
-                      <blockquote>{application.coverMessage}</blockquote>
-                    )}
-                  {application.resumeFileName &&
-                    application.status !== 'cancelled' && (
-                      <button
-                        className="secondary-action"
+                  ) : null}
+                </div>
+                {application.candidate?.skills.length ? (
+                  <ul className="flex flex-wrap gap-2" aria-label="Habilidades">
+                    {application.candidate.skills.map((skill) => (
+                      <li
+                        className="rounded-full bg-vale-action-subtle px-3 py-1 text-xs font-extrabold text-vale-action"
+                        key={skill}
+                      >
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {application.coverMessage &&
+                application.status !== 'cancelled' ? (
+                  <blockquote className="border-l-4 border-vale-action bg-vale-neutral-subtle px-4 py-3 text-sm leading-6 text-vale-muted">
+                    {application.coverMessage}
+                  </blockquote>
+                ) : null}
+                {application.resumeFileName &&
+                application.status !== 'cancelled' ? (
+                  <Button
+                    onClick={() =>
+                      void downloadApplicationResume(
+                        application.id,
+                        application.resumeFileName!,
+                      )
+                    }
+                    variant="secondary"
+                  >
+                    <Icon icon={faFileArrowDown} />
+                    Baixar currículo enviado
+                  </Button>
+                ) : null}
+                {!['rejected', 'cancelled'].includes(application.status) ? (
+                  <div className="flex flex-wrap gap-3 border-t border-vale-border pt-5">
+                    {application.status === 'submitted' ? (
+                      <Button
                         onClick={() =>
-                          void downloadApplicationResume(
-                            application.id,
-                            application.resumeFileName!,
-                          )
+                          void changeApplication(application, 'under_review')
+                        }
+                        variant="secondary"
+                      >
+                        Iniciar análise
+                      </Button>
+                    ) : null}
+                    {['submitted', 'under_review'].includes(
+                      application.status,
+                    ) ? (
+                      <Button
+                        onClick={() =>
+                          void changeApplication(application, 'shortlisted')
                         }
                       >
-                        Baixar currículo enviado
-                      </button>
-                    )}
-                  {!['rejected', 'cancelled'].includes(application.status) && (
-                    <div className="inline-actions">
-                      {application.status === 'submitted' && (
-                        <button
-                          className="secondary-action"
-                          onClick={() =>
-                            void changeApplication(application, 'under_review')
-                          }
-                        >
-                          Iniciar análise
-                        </button>
-                      )}
-                      {['submitted', 'under_review'].includes(
-                        application.status,
-                      ) && (
-                        <button
-                          className="primary-action"
-                          onClick={() =>
-                            void changeApplication(application, 'shortlisted')
-                          }
-                        >
-                          Próxima etapa
-                        </button>
-                      )}
-                      <button
-                        className="danger-action"
-                        onClick={() =>
-                          void changeApplication(application, 'rejected')
-                        }
-                      >
-                        Encerrar
-                      </button>
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
+                        Próxima etapa
+                      </Button>
+                    ) : null}
+                    <Button
+                      onClick={() =>
+                        void changeApplication(application, 'rejected')
+                      }
+                      variant="danger"
+                    >
+                      Encerrar
+                    </Button>
+                  </div>
+                ) : null}
+                <details className="text-sm text-vale-muted">
+                  <summary className="cursor-pointer font-extrabold text-vale-action">
+                    Ver histórico
+                  </summary>
+                  <ol className="mt-3 grid gap-2 border-l-2 border-vale-border pl-4">
+                    {application.history.map((entry) => (
+                      <li className="grid gap-1" key={entry.id}>
+                        <span className="font-bold text-vale-ink">
+                          {applicationStatusLabels[entry.toStatus]}
+                        </span>
+                        <time dateTime={entry.changedAt}>
+                          {new Date(entry.changedAt).toLocaleString('pt-BR')}
+                        </time>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              </Card>
+            ))}
+          </div>
         </section>
-      )}
+      ) : null}
+
+      <Dialog
+        confirmLabel="Encerrar vaga"
+        confirmLoading={closing}
+        description={
+          pendingClose
+            ? `A vaga “${pendingClose.title}” deixará de receber novas candidaturas.`
+            : undefined
+        }
+        onClose={() => setPendingClose(null)}
+        onConfirm={() => void confirmClose()}
+        open={Boolean(pendingClose)}
+        title="Encerrar esta vaga?"
+        tone="danger"
+      >
+        <p className="text-sm leading-6 text-vale-muted">
+          Pessoas candidatas não poderão mais se inscrever. Você poderá pedir
+          uma republicação, que exigirá nova moderação.
+        </p>
+      </Dialog>
+
+      <Dialog
+        confirmLabel={
+          editingId ? 'Reenviar para moderação' : 'Enviar para moderação'
+        }
+        confirmLoading={saving}
+        description="Revise os dados abaixo antes de enviar. A vaga só ficará pública após a decisão da equipe."
+        onClose={() => setPendingJob(null)}
+        onConfirm={() => void saveJob()}
+        open={Boolean(pendingJob)}
+        title={editingId ? 'Revisar atualização da vaga' : 'Revisar nova vaga'}
+      >
+        {pendingJob ? (
+          <div className="grid gap-4 text-sm">
+            <dl className="grid gap-3 rounded-vale-md border border-vale-border bg-vale-neutral-subtle p-4">
+              <div>
+                <dt className="font-extrabold text-vale-ink">Título</dt>
+                <dd className="mt-1 text-vale-muted">{pendingJob.title}</dd>
+              </div>
+              <div>
+                <dt className="font-extrabold text-vale-ink">
+                  Área e localidade
+                </dt>
+                <dd className="mt-1 text-vale-muted">
+                  {pendingJob.area} · {pendingJob.location}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-extrabold text-vale-ink">Descrição</dt>
+                <dd className="mt-1 max-h-28 overflow-y-auto whitespace-pre-line text-vale-muted">
+                  {pendingJob.description}
+                </dd>
+              </div>
+            </dl>
+            {reviewError ? (
+              <Alert title="Não foi possível enviar a vaga" tone="danger">
+                {reviewError}
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
+      </Dialog>
     </section>
   );
 }

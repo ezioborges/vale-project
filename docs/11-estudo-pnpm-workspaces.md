@@ -53,7 +53,7 @@ Use esta lista como checklist. Marque cada item quando conseguir explicar a idei
 ### 1. Ler a decisão no contexto do MVP
 
 - [ ] Ler a linha `pnpm workspaces` em `docs/10-plano-de-estudos.md`.
-- [ ] Ler `Gerenciador de monorepo` em `docs/09-plano-de-acao.md`.
+- [ ] Ler `Gerenciador de monorepo` em `docs/planos-de-acao/09-plano-de-acao-mvp.md`.
 - [ ] Ler a estrutura sugerida em `docs/04-arquitetura.md`.
 - [ ] Escrever uma frase explicando por que o projeto precisa de `apps/api`, `apps/web` e `packages/shared`.
 

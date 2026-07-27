@@ -79,6 +79,6 @@ no backend.
 
 ## Plano de transição
 
-Seguir o [plano de aplicação do design](../12-plano-aplicacao-design.md), começando pelos componentes
+Seguir o [plano de aplicação do design](../planos-de-acao/12-plano-aplicacao-design.md), começando pelos componentes
 fundamentais e pelos fluxos de identidade. O procedimento operacional está no
 [runbook de aplicação do design system](../runbooks/aplicar-design-system.md).

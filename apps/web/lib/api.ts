@@ -319,8 +319,9 @@ function endSession(fetcher: Fetcher, error: ApiRequestError): void {
       detail: { code: error.code, status: error.status },
     }),
   );
-  const target = error.status === 403 ? '/conta-indisponivel' : '/';
-  if (window.location.pathname !== target) {
+  const target =
+    error.status === 403 ? '/conta-indisponivel' : '/?sessao=expirada';
+  if (`${window.location.pathname}${window.location.search}` !== target) {
     window.location.replace(target);
   }
 }

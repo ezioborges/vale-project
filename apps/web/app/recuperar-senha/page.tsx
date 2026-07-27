@@ -1,6 +1,5 @@
-import Link from 'next/link';
-
 import { PasswordResetForm } from '@/components/password-reset-form';
+import { PublicIdentityLayout } from '@/components/identity-layout';
 
 export default async function PasswordResetPage({
   searchParams,
@@ -10,15 +9,8 @@ export default async function PasswordResetPage({
   const { token } = await searchParams;
 
   return (
-    <main className="app-shell protected-area">
-      <header className="topbar">
-        <Link className="brand" href="/">
-          Vale Project
-        </Link>
-      </header>
-      <div className="onboarding-layout">
-        <PasswordResetForm token={token} />
-      </div>
-    </main>
+    <PublicIdentityLayout>
+      <PasswordResetForm token={token} />
+    </PublicIdentityLayout>
   );
 }

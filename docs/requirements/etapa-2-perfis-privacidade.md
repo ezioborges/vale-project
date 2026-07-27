@@ -1,7 +1,7 @@
 # Execução da Fase 2 — perfis e privacidade
 
 - Data da verificação: 2026-07-26
-- Plano de origem: [`../09-plano-de-acao.md`](../09-plano-de-acao.md)
+- Plano de origem: [`../planos-de-acao/09-plano-de-acao-mvp.md`](../planos-de-acao/09-plano-de-acao-mvp.md)
 - Estado: concluída
 
 ## Escopo entregue
@@ -118,3 +118,27 @@ A Fase 3 implementou `Application` e ampliou exclusivamente a política `applica
 contratante dono de uma vaga associada a uma candidatura não cancelada, com testes positivos e
 negativos por recurso. As evidências estão em
 [`etapa-3-vagas-busca-candidaturas.md`](etapa-3-vagas-busca-candidaturas.md).
+
+## Aplicação visual — 2026-07-27
+
+- rotas autenticadas de perfil de pessoa candidata e contratante passaram a usar o padrão composto
+  de edição de perfil, com resumo de completude, seções curtas e salvamento explícito;
+- campos associam rótulo, ajuda e erro; uma falha de validação leva o foco ao primeiro campo
+  inválido quando possível;
+- o onboarding mostra as duas etapas — confirmação de e-mail e perfil retomável — sem mudar a
+  sequência ou os contratos de autenticação;
+- arquivos mostram formato, limite, substituição, estado de envio, download e remoção; a mensagem
+  diferencia remoção de arquivo, desativação de perfil e exclusão de conta;
+- a escolha de visibilidade tem prévia textual para `private`, `applications_only` e
+  `verified_employers`; a API continua sendo a autoridade para toda liberação de acesso;
+- o centro de privacidade ganhou estados de carregamento, erro recuperável e indisponibilidade de
+  controles ainda pendentes de aprovação, sem prometer exportação ou exclusão antes da política.
+
+Validação executada:
+
+```bash
+pnpm --filter @vale/web typecheck
+pnpm --filter @vale/web lint
+pnpm --filter @vale/web test
+pnpm --filter @vale/web build
+```

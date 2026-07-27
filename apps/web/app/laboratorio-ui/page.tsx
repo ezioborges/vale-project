@@ -1,4 +1,3 @@
-import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
   faArrowRight,
   faBell,
@@ -6,7 +5,6 @@ import {
   faBriefcase,
   faBuilding,
   faCheck,
-  faChevronDown,
   faChevronRight,
   faCircleCheck,
   faCircleExclamation,
@@ -16,7 +14,6 @@ import {
   faEye,
   faFilter,
   faGlobe,
-  faHeart,
   faHouse,
   faInfoCircle,
   faLocationDot,
@@ -30,9 +27,35 @@ import {
   faUserPlus,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+
+import {
+  ApplicationStatusBadge,
+  JobStatusBadge,
+} from '@/components/market-status';
+import { Badge } from '@/components/ui/badge';
+import { ActionLink, Button, IconButton } from '@/components/ui/button';
+import { Brand } from '@/components/ui/brand';
+import { Card } from '@/components/ui/card';
+import {
+  CheckboxField,
+  FormField,
+  RadioCard,
+  Select,
+  TextArea,
+  TextInput,
+} from '@/components/ui/form-field';
+import {
+  Alert,
+  EmptyState,
+  LoadingState,
+  Progress,
+} from '@/components/ui/feedback';
+import { Icon } from '@/components/ui/icon';
+import { Container, PageLayout } from '@/components/ui/layout';
+import { PageHeading } from '@/components/ui/page-heading';
+import { DialogExample } from '@/components/ui/dialog-example';
 
 export const metadata: Metadata = {
   title: 'Laboratório UI | Vale',
@@ -91,99 +114,6 @@ const rollout = [
   },
 ];
 
-function Icon({
-  icon,
-  className = '',
-}: {
-  icon: IconDefinition;
-  className?: string;
-}) {
-  return (
-    <FontAwesomeIcon
-      aria-hidden="true"
-      className={className}
-      fixedWidth
-      icon={icon}
-    />
-  );
-}
-
-function Brand({ inverse = false }: { inverse?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-3">
-      <span className="relative grid size-10 place-items-center overflow-hidden rounded-[14px] bg-vale-violet text-white shadow-[0_8px_24px_rgba(91,61,245,0.24)]">
-        <span className="absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r from-vale-pink via-vale-yellow to-vale-green" />
-        <Icon className="text-sm" icon={faHeart} />
-      </span>
-      <span className="flex flex-col leading-none">
-        <span
-          className={`text-lg font-black tracking-[-0.04em] ${
-            inverse ? 'text-white' : 'text-vale-ink'
-          }`}
-        >
-          vale
-        </span>
-        <span
-          className={`mt-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-            inverse ? 'text-white/60' : 'text-vale-muted'
-          }`}
-        >
-          talentos & serviços
-        </span>
-      </span>
-    </span>
-  );
-}
-
-function SectionHeading({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mb-8 max-w-3xl">
-      <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-vale-violet">
-        {eyebrow}
-      </p>
-      <h2 className="text-3xl font-black tracking-[-0.045em] text-vale-ink sm:text-4xl">
-        {title}
-      </h2>
-      <p className="mt-4 max-w-2xl text-base leading-7 text-vale-muted">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function StatusBadge({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: 'green' | 'blue' | 'violet' | 'orange' | 'neutral';
-}) {
-  const tones = {
-    green: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-    blue: 'bg-blue-50 text-blue-800 ring-blue-200',
-    violet: 'bg-violet-50 text-violet-800 ring-violet-200',
-    orange: 'bg-orange-50 text-orange-800 ring-orange-200',
-    neutral: 'bg-slate-100 text-slate-700 ring-slate-200',
-  };
-
-  return (
-    <span
-      className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ring-1 ring-inset ${tones[tone]}`}
-    >
-      {tone === 'green' ? <Icon icon={faCheck} /> : null}
-      {children}
-    </span>
-  );
-}
-
 function SpecimenLabel({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
@@ -197,14 +127,17 @@ function SpecimenLabel({ title, detail }: { title: string; detail: string }) {
 
 export default function UiLaboratoryPage() {
   return (
-    <main className="min-h-screen bg-vale-canvas font-sans text-vale-ink">
+    <PageLayout className="font-sans">
       <div
         aria-hidden="true"
         className="h-1.5 bg-gradient-to-r from-vale-pink via-vale-orange via-vale-yellow via-vale-green via-vale-blue to-vale-violet"
       />
 
       <header className="sticky top-0 z-50 border-b border-vale-line/80 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-18 max-w-[1480px] items-center justify-between gap-6 px-5 py-3 lg:px-8">
+        <Container
+          className="flex min-h-18 items-center justify-between gap-6 py-3"
+          size="wide"
+        >
           <Link
             aria-label="Voltar para a página inicial do Vale"
             className="rounded-2xl focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-vale-blue"
@@ -242,7 +175,7 @@ export default function UiLaboratoryPage() {
               <Icon icon={faArrowRight} />
             </a>
           </nav>
-        </div>
+        </Container>
       </header>
 
       <section className="relative overflow-hidden border-b border-vale-line bg-white">
@@ -257,7 +190,7 @@ export default function UiLaboratoryPage() {
         <div className="relative mx-auto grid max-w-[1480px] gap-10 px-5 py-16 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8 lg:py-24">
           <div className="max-w-4xl">
             <div className="mb-6 flex flex-wrap items-center gap-3">
-              <StatusBadge tone="violet">Referência oficial</StatusBadge>
+              <Badge tone="accent">Referência oficial</Badge>
               <span className="text-sm font-bold text-vale-muted">
                 Empregabilidade com orgulho e segurança
               </span>
@@ -274,13 +207,10 @@ export default function UiLaboratoryPage() {
               acolhedora, clara e acessível.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <a
-                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-vale-violet px-5 text-sm font-extrabold text-white shadow-[0_12px_28px_rgba(91,61,245,0.22)] transition hover:-translate-y-0.5 hover:bg-vale-violet-deep focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                href="#fundacoes"
-              >
+              <ActionLink href="#fundacoes" size="lg">
                 Explorar o sistema
                 <Icon icon={faArrowRight} />
-              </a>
+              </ActionLink>
               <a
                 className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-vale-line bg-white px-5 text-sm font-extrabold text-vale-ink transition hover:border-vale-violet hover:text-vale-violet focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
                 href="#cadastro"
@@ -358,7 +288,8 @@ export default function UiLaboratoryPage() {
             className="scroll-mt-24 border-b border-vale-line px-5 py-16 lg:px-12 lg:py-20"
             id="fundacoes"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="A identidade usa bastante espaço em branco, contraste alto e uma paleta de orgulho aplicada com intenção. O violeta identifica ações e os demais tons organizam categorias e feedbacks."
               eyebrow="01 · Fundações"
               title="Clareza primeiro. Cor com propósito."
@@ -382,7 +313,7 @@ export default function UiLaboratoryPage() {
             </div>
 
             <div className="mt-8 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-              <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
+              <Card className="p-6 sm:p-8">
                 <SpecimenLabel
                   detail="Arial / system sans"
                   title="Escala tipográfica"
@@ -414,7 +345,7 @@ export default function UiLaboratoryPage() {
                     </p>
                   </div>
                 </div>
-              </article>
+              </Card>
 
               <article
                 className="scroll-mt-28 rounded-3xl bg-vale-ink p-6 text-white sm:p-8"
@@ -448,7 +379,8 @@ export default function UiLaboratoryPage() {
             className="scroll-mt-24 border-b border-vale-line bg-white/45 px-5 py-16 lg:px-12 lg:py-20"
             id="componentes"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="Os componentes combinam cantos suaves, hierarquia nítida e estados de interação visíveis. A base abaixo deve ser reutilizada, não redesenhada a cada fluxo."
               eyebrow="02 · Componentes"
               title="Uma linguagem consistente para agir."
@@ -458,82 +390,65 @@ export default function UiLaboratoryPage() {
               <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
                 <SpecimenLabel detail="action/*" title="Botões" />
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-vale-violet px-5 text-sm font-extrabold text-white shadow-[0_10px_24px_rgba(91,61,245,0.2)] transition hover:bg-vale-violet-deep focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                    type="button"
-                  >
+                  <Button size="lg">
                     Criar perfil
                     <Icon icon={faArrowRight} />
-                  </button>
-                  <button
-                    className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-vale-line bg-white px-5 text-sm font-extrabold text-vale-ink transition hover:border-vale-violet hover:text-vale-violet focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                    type="button"
-                  >
+                  </Button>
+                  <Button size="lg" variant="secondary">
                     Salvar rascunho
-                  </button>
-                  <button
-                    className="inline-flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-extrabold text-vale-violet transition hover:bg-vale-soft focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                    type="button"
-                  >
+                  </Button>
+                  <Button size="lg" variant="ghost">
                     Ver detalhes
                     <Icon icon={faChevronRight} />
-                  </button>
-                  <button
-                    aria-label="Salvar oportunidade"
-                    className="grid size-12 place-items-center rounded-xl border border-vale-line bg-white text-vale-muted transition hover:border-vale-violet hover:text-vale-violet focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                    title="Salvar oportunidade"
-                    type="button"
+                  </Button>
+                  <IconButton
+                    label="Salvar oportunidade"
+                    size="lg"
+                    variant="secondary"
                   >
                     <Icon icon={faBookmark} />
-                  </button>
+                  </IconButton>
                 </div>
               </article>
 
               <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
                 <SpecimenLabel detail="status/*" title="Etiquetas e estados" />
                 <div className="flex flex-wrap items-center gap-3">
-                  <StatusBadge tone="green">Perfil verificado</StatusBadge>
-                  <StatusBadge tone="blue">Trabalho remoto</StatusBadge>
-                  <StatusBadge tone="violet">Nova oportunidade</StatusBadge>
-                  <StatusBadge tone="orange">Revisão pendente</StatusBadge>
-                  <StatusBadge tone="neutral">Rascunho</StatusBadge>
+                  <Badge icon={<Icon icon={faCheck} />} tone="success">
+                    Perfil verificado
+                  </Badge>
+                  <Badge tone="info">Trabalho remoto</Badge>
+                  <Badge tone="accent">Nova oportunidade</Badge>
+                  <Badge tone="warning">Revisão pendente</Badge>
+                  <Badge tone="neutral">Rascunho</Badge>
                 </div>
               </article>
 
               <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
                 <SpecimenLabel detail="input/default" title="Campos" />
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-extrabold text-vale-ink">
-                    Buscar oportunidades
-                    <span className="relative">
-                      <Icon
-                        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-vale-muted"
-                        icon={faMagnifyingGlass}
-                      />
-                      <input
-                        className="min-h-12 w-full rounded-xl border border-vale-line bg-white py-3 pl-11 pr-4 font-normal text-vale-ink outline-none transition placeholder:text-vale-muted/70 focus:border-vale-violet focus:ring-3 focus:ring-vale-violet/10"
-                        placeholder="Cargo, serviço ou habilidade"
-                        type="search"
-                      />
-                    </span>
-                  </label>
-                  <label className="grid gap-2 text-sm font-extrabold text-vale-ink">
-                    Modalidade
-                    <span className="relative">
-                      <select
-                        className="min-h-12 w-full appearance-none rounded-xl border border-vale-line bg-white px-4 pr-10 font-normal text-vale-ink outline-none transition focus:border-vale-violet focus:ring-3 focus:ring-vale-violet/10"
-                        defaultValue="remote"
-                      >
-                        <option value="remote">Remoto</option>
-                        <option value="hybrid">Híbrido</option>
-                        <option value="onsite">Presencial</option>
-                      </select>
-                      <Icon
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-vale-muted"
-                        icon={faChevronDown}
-                      />
-                    </span>
-                  </label>
+                  <FormField label="Buscar oportunidades">
+                    <TextInput
+                      leadingIcon={<Icon icon={faMagnifyingGlass} />}
+                      placeholder="Cargo, serviço ou habilidade"
+                      type="search"
+                    />
+                  </FormField>
+                  <FormField label="Modalidade">
+                    <Select defaultValue="remote">
+                      <option value="remote">Remoto</option>
+                      <option value="hybrid">Híbrido</option>
+                      <option value="onsite">Presencial</option>
+                    </Select>
+                  </FormField>
+                  <FormField
+                    className="sm:col-span-2"
+                    error="Descreva ao menos uma adaptação relevante."
+                    hint="Explique somente o que a pessoa precisa saber para trabalhar bem."
+                    label="Acessibilidade da oportunidade"
+                  >
+                    <TextArea placeholder="Ex.: legendas nas reuniões e horários flexíveis" />
+                  </FormField>
                 </div>
               </article>
 
@@ -570,7 +485,8 @@ export default function UiLaboratoryPage() {
             className="scroll-mt-24 border-b border-vale-line px-5 py-16 lg:px-12 lg:py-20"
             id="cadastro"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="O primeiro fluxo respeita a Fase 1 do plano: escolha de papel, identidade mínima, consentimentos claros, confirmação de e-mail e encaminhamento para o onboarding adequado."
               eyebrow="03 · Cadastro"
               title="Começar deve parecer simples e seguro."
@@ -663,7 +579,7 @@ export default function UiLaboratoryPage() {
                         Campos essenciais agora. O restante vem no onboarding.
                       </p>
                     </div>
-                    <StatusBadge tone="neutral">Não envia dados</StatusBadge>
+                    <Badge tone="neutral">Não envia dados</Badge>
                   </div>
 
                   <form
@@ -676,109 +592,66 @@ export default function UiLaboratoryPage() {
                         Quero usar o Vale como:
                       </legend>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="flex cursor-pointer gap-3 rounded-2xl border-2 border-vale-violet bg-vale-soft p-4">
-                          <input
-                            className="mt-1 accent-vale-violet"
-                            defaultChecked
-                            name="perfil"
-                            type="radio"
-                            value="candidate"
-                          />
-                          <span>
-                            <span className="flex items-center gap-2 text-sm font-extrabold">
-                              <Icon
-                                className="text-vale-violet"
-                                icon={faUser}
-                              />
-                              Pessoa candidata
-                            </span>
-                            <span className="mt-1 block text-xs leading-5 text-vale-muted">
-                              Buscar vagas e oferecer serviços.
-                            </span>
-                          </span>
-                        </label>
-                        <label className="flex cursor-pointer gap-3 rounded-2xl border border-vale-line bg-white p-4 transition hover:border-vale-violet">
-                          <input
-                            className="mt-1 accent-vale-violet"
-                            name="perfil"
-                            type="radio"
-                            value="employer"
-                          />
-                          <span>
-                            <span className="flex items-center gap-2 text-sm font-extrabold">
-                              <Icon
-                                className="text-vale-muted"
-                                icon={faBuilding}
-                              />
-                              Contratante
-                            </span>
-                            <span className="mt-1 block text-xs leading-5 text-vale-muted">
-                              Publicar vagas e contratar talentos.
-                            </span>
-                          </span>
-                        </label>
+                        <RadioCard
+                          defaultChecked
+                          description="Buscar vagas e oferecer serviços."
+                          name="perfil"
+                          value="candidate"
+                          label="Pessoa candidata"
+                        >
+                          <Icon className="text-vale-action" icon={faUser} />
+                        </RadioCard>
+                        <RadioCard
+                          description="Publicar vagas e contratar talentos."
+                          name="perfil"
+                          value="employer"
+                          label="Contratante"
+                        >
+                          <Icon className="text-vale-muted" icon={faBuilding} />
+                        </RadioCard>
                       </div>
                     </fieldset>
 
                     <div className="grid gap-5 sm:grid-cols-2">
-                      <label className="grid gap-2 text-sm font-extrabold">
-                        Nome de exibição
-                        <span className="relative">
-                          <Icon
-                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-vale-muted"
-                            icon={faUser}
-                          />
-                          <input
-                            className="min-h-12 w-full rounded-xl border border-vale-line py-3 pl-11 pr-4 font-normal outline-none transition placeholder:text-vale-muted/65 focus:border-vale-violet focus:ring-3 focus:ring-vale-violet/10"
-                            name="nome"
-                            placeholder="Como devemos chamar você?"
-                            type="text"
-                          />
-                        </span>
-                      </label>
-                      <label className="grid gap-2 text-sm font-extrabold">
-                        E-mail
-                        <span className="relative">
-                          <Icon
-                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-vale-muted"
-                            icon={faEnvelope}
-                          />
-                          <input
-                            className="min-h-12 w-full rounded-xl border border-vale-line py-3 pl-11 pr-4 font-normal outline-none transition placeholder:text-vale-muted/65 focus:border-vale-violet focus:ring-3 focus:ring-vale-violet/10"
-                            name="email"
-                            placeholder="voce@exemplo.com"
-                            type="email"
-                          />
-                        </span>
-                      </label>
+                      <FormField label="Nome de exibição">
+                        <TextInput
+                          leadingIcon={<Icon icon={faUser} />}
+                          name="nome"
+                          placeholder="Como devemos chamar você?"
+                          type="text"
+                        />
+                      </FormField>
+                      <FormField label="E-mail">
+                        <TextInput
+                          leadingIcon={<Icon icon={faEnvelope} />}
+                          name="email"
+                          placeholder="voce@exemplo.com"
+                          type="email"
+                        />
+                      </FormField>
                     </div>
 
-                    <label className="flex items-start gap-3 text-sm leading-6 text-vale-muted">
-                      <input
-                        className="mt-1.5 size-4 accent-vale-violet"
-                        name="termos"
-                        type="checkbox"
-                      />
-                      <span>
-                        Li e aceito os{' '}
-                        <span className="font-bold text-vale-violet">
-                          Termos de Uso
-                        </span>{' '}
-                        e a{' '}
-                        <span className="font-bold text-vale-violet">
-                          Política de Privacidade
-                        </span>
-                        .
-                      </span>
-                    </label>
+                    <CheckboxField
+                      label={
+                        <>
+                          Li e aceito os{' '}
+                          <span className="font-bold text-vale-action">
+                            Termos de Uso
+                          </span>{' '}
+                          e a{' '}
+                          <span className="font-bold text-vale-action">
+                            Política de Privacidade
+                          </span>
+                          .
+                        </>
+                      }
+                      name="termos"
+                    />
 
-                    <button
-                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-vale-violet px-5 text-sm font-extrabold text-white shadow-[0_12px_28px_rgba(91,61,245,0.2)] transition hover:bg-vale-violet-deep focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                      type="button"
-                    >
+                    <Button fullWidth size="lg">
                       Continuar cadastro
                       <Icon icon={faArrowRight} />
-                    </button>
+                    </Button>
                   </form>
                 </div>
               </div>
@@ -789,7 +662,8 @@ export default function UiLaboratoryPage() {
             className="scroll-mt-24 border-b border-vale-line bg-white/45 px-5 py-16 lg:px-12 lg:py-20"
             id="produto"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="A mesma base precisa funcionar para quem busca uma oportunidade, para quem presta um serviço e para organizações contratantes."
               eyebrow="04 · Produto"
               title="Do encontro à contratação."
@@ -815,14 +689,12 @@ export default function UiLaboratoryPage() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    aria-label="Salvar vaga de Pessoa Desenvolvedora Front-end"
-                    className="grid size-11 place-items-center rounded-full border border-vale-line text-vale-muted transition hover:border-vale-violet hover:text-vale-violet focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-vale-blue"
-                    title="Salvar vaga"
-                    type="button"
+                  <IconButton
+                    label="Salvar vaga de Pessoa Desenvolvedora Front-end"
+                    variant="secondary"
                   >
                     <Icon icon={faBookmark} />
-                  </button>
+                  </IconButton>
                 </div>
 
                 <h3 className="mt-7 text-2xl font-black tracking-[-0.04em]">
@@ -834,9 +706,9 @@ export default function UiLaboratoryPage() {
                 </p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <StatusBadge tone="blue">Remoto</StatusBadge>
-                  <StatusBadge tone="violet">Pleno</StatusBadge>
-                  <StatusBadge tone="green">CLT</StatusBadge>
+                  <Badge tone="info">Remoto</Badge>
+                  <Badge tone="accent">Pleno</Badge>
+                  <Badge tone="success">CLT</Badge>
                 </div>
 
                 <div className="mt-7 grid gap-3 border-t border-vale-line pt-6 text-sm font-semibold text-vale-muted sm:grid-cols-3">
@@ -858,13 +730,10 @@ export default function UiLaboratoryPage() {
                   <p className="text-xs font-semibold text-vale-muted">
                     Faixa salarial publicada pela empresa
                   </p>
-                  <button
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-vale-violet px-5 text-sm font-extrabold text-white transition hover:bg-vale-violet-deep focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                    type="button"
-                  >
+                  <Button>
                     Ver oportunidade
                     <Icon icon={faArrowRight} />
-                  </button>
+                  </Button>
                 </div>
               </article>
 
@@ -896,8 +765,8 @@ export default function UiLaboratoryPage() {
                     3 de 5 etapas
                   </span>
                 </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-vale-violet via-vale-pink to-vale-yellow" />
+                <div className="mt-4">
+                  <Progress label="Perfil completo" value={72} />
                 </div>
 
                 <ul className="mt-8 grid gap-3">
@@ -931,13 +800,10 @@ export default function UiLaboratoryPage() {
                   ))}
                 </ul>
 
-                <button
-                  className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-extrabold text-vale-ink transition hover:bg-vale-soft focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-yellow"
-                  type="button"
-                >
+                <Button className="mt-6" fullWidth variant="secondary">
                   Completar perfil
                   <Icon icon={faArrowRight} />
-                </button>
+                </Button>
               </article>
             </div>
 
@@ -975,83 +841,89 @@ export default function UiLaboratoryPage() {
             className="scroll-mt-24 border-b border-vale-line px-5 py-16 lg:px-12 lg:py-20"
             id="estados"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="Toda jornada crítica precisa prever sucesso, atenção, erro, carregamento e vazio. Texto e ícone explicam o estado; a cor apenas reforça."
               eyebrow="05 · Estados"
               title="Nada fica sem resposta."
             />
 
             <div className="grid gap-4 xl:grid-cols-3">
-              <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <div className="flex items-start gap-3">
-                  <Icon className="mt-1 text-vale-green" icon={faCircleCheck} />
-                  <div>
-                    <h3 className="font-extrabold text-emerald-950">
-                      Candidatura enviada
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-emerald-900/70">
-                      Você pode acompanhar as atualizações em “Candidaturas”.
-                    </p>
-                  </div>
-                </div>
-              </article>
-              <article className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
-                <div className="flex items-start gap-3">
-                  <Icon
-                    className="mt-1 text-vale-orange"
-                    icon={faCircleExclamation}
-                  />
-                  <div>
-                    <h3 className="font-extrabold text-orange-950">
-                      Perfil quase completo
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-orange-900/70">
-                      Adicione suas habilidades para melhorar as recomendações.
-                    </p>
-                  </div>
-                </div>
-              </article>
-              <article className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-                <div className="flex items-start gap-3">
-                  <Icon className="mt-1 text-vale-blue" icon={faInfoCircle} />
-                  <div>
-                    <h3 className="font-extrabold text-blue-950">
-                      Sua privacidade
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-blue-900/70">
-                      Você pode alterar a visibilidade do perfil quando quiser.
-                    </p>
-                  </div>
-                </div>
-              </article>
+              <Alert
+                icon={<Icon icon={faCircleCheck} />}
+                title="Candidatura enviada"
+                tone="success"
+              >
+                Você pode acompanhar as atualizações em “Candidaturas”.
+              </Alert>
+              <Alert
+                icon={<Icon icon={faCircleExclamation} />}
+                title="Perfil quase completo"
+                tone="warning"
+              >
+                Adicione suas habilidades para melhorar as recomendações.
+              </Alert>
+              <Alert
+                icon={<Icon icon={faInfoCircle} />}
+                title="Sua privacidade"
+                tone="info"
+              >
+                Você pode alterar a visibilidade do perfil quando quiser.
+              </Alert>
             </div>
 
-            <article className="mt-5 grid place-items-center rounded-3xl border border-dashed border-vale-line bg-white px-5 py-12 text-center">
-              <div className="grid size-16 place-items-center rounded-2xl bg-vale-soft text-2xl text-vale-violet">
-                <Icon icon={faBriefcase} />
-              </div>
-              <h3 className="mt-5 text-xl font-black tracking-[-0.03em]">
-                Nenhuma candidatura por aqui — ainda
-              </h3>
-              <p className="mt-2 max-w-md text-sm leading-6 text-vale-muted">
-                Explore oportunidades alinhadas ao seu perfil e salve as que
-                quiser ver depois.
+            <Card className="mt-5 p-6">
+              <SpecimenLabel
+                detail="market/status-badge"
+                title="Estados de oportunidade"
+              />
+              <p className="max-w-2xl text-sm leading-6 text-vale-muted">
+                Os mesmos badges do mercado combinam texto e cor para comunicar
+                o estado da vaga ou candidatura.
               </p>
-              <button
-                className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-vale-violet px-5 text-sm font-extrabold text-white transition hover:bg-vale-violet-deep focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-blue"
-                type="button"
-              >
-                Explorar oportunidades
-                <Icon icon={faArrowRight} />
-              </button>
-            </article>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <JobStatusBadge status="pending_review" />
+                <JobStatusBadge status="approved" />
+                <ApplicationStatusBadge status="under_review" />
+                <ApplicationStatusBadge status="shortlisted" />
+              </div>
+            </Card>
+
+            <div className="mt-5">
+              <EmptyState
+                action={
+                  <Button>
+                    Explorar oportunidades
+                    <Icon icon={faArrowRight} />
+                  </Button>
+                }
+                description="Explore oportunidades alinhadas ao seu perfil e salve as que quiser ver depois."
+                icon={<Icon icon={faBriefcase} />}
+                title="Nenhuma candidatura por aqui — ainda"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-5 lg:grid-cols-2">
+              <Card className="p-6">
+                <SpecimenLabel detail="feedback/loading" title="Carregamento" />
+                <LoadingState label="Buscando oportunidades disponíveis" />
+              </Card>
+              <Card className="p-6">
+                <SpecimenLabel
+                  detail="overlay/confirmation"
+                  title="Confirmação"
+                />
+                <DialogExample />
+              </Card>
+            </div>
           </section>
 
           <section
             className="scroll-mt-24 px-5 py-16 lg:px-12 lg:py-20"
             id="aplicacao"
           >
-            <SectionHeading
+            <PageHeading
+              className="mb-8"
               description="A aplicação do padrão acompanha a sequência do MVP. Cada etapa só avança quando os componentes usados estiverem acessíveis, responsivos, testados e documentados."
               eyebrow="06 · Plano de aplicação"
               title="Evoluir sem perder consistência."
@@ -1128,6 +1000,6 @@ export default function UiLaboratoryPage() {
           </Link>
         </div>
       </footer>
-    </main>
+    </PageLayout>
   );
 }

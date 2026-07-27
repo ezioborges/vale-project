@@ -6,10 +6,20 @@ import {
   type EmployerProfile,
   type EmployerProfileInput,
 } from '@vale/shared';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import { getCurrentUser, getMyProfile, saveEmployerProfile } from '@/lib/api';
+
 import { ProfileAssetControl } from './profile-asset-control';
+import {
+  ProfileEditorLayout,
+  ProfileIntro,
+  ProfileSaveBar,
+  ProfileSection,
+} from './profile-editor-layout';
+import { Alert, LoadingState } from './ui/feedback';
+import { FormField, RadioCard, TextArea, TextInput } from './ui/form-field';
+import { Badge } from './ui/badge';
 
 const typeLabels = {
   company: 'Empresa',
@@ -17,57 +27,70 @@ const typeLabels = {
   individual: 'Pessoa física',
 } as const;
 
+const typeDescriptions = {
+  company: 'Para uma empresa que contrata.',
+  organization: 'Para coletivos e organizações.',
+  individual: 'Para quem contrata em nome próprio.',
+} as const;
+
 export function EmployerProfileForm() {
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<EmployerProfileInput>(emptyEmployer());
   const [profile, setProfile] = useState<EmployerProfile | null>(null);
   const [message, setMessage] = useState('Carregando perfil institucional…');
   const [isBusy, setIsBusy] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
+
     Promise.all([getCurrentUser(), getMyProfile()])
       .then(([user, current]) => {
         if (!active) return;
         if (current?.kind === 'employer') {
           setProfile(current);
           setDraft(toEmployerInput(current));
-          setMessage('Perfil carregado.');
-        } else {
-          setDraft((value) => ({
-            ...value,
-            responsibleName: user.displayName,
-            contactEmail: user.email,
-          }));
-          setMessage(
-            'Complete os dados institucionais. A verificação é uma etapa administrativa separada.',
-          );
+          setMessage('Perfil institucional carregado.');
+          return;
         }
+        setDraft((value) => ({
+          ...value,
+          responsibleName: user.displayName,
+          contactEmail: user.email,
+        }));
+        setMessage(
+          'Complete o essencial. A verificação institucional é uma etapa administrativa separada.',
+        );
       })
       .catch((error) => {
-        if (active) {
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível carregar o perfil.',
-          );
-        }
+        if (!active) return;
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível carregar o perfil.',
+        );
       })
       .finally(() => {
         if (active) setIsBusy(false);
       });
+
     return () => {
       active = false;
     };
   }, []);
 
-  async function save(event: FormEvent) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = employerProfileInputSchema.safeParse(draft);
     if (!parsed.success) {
-      setMessage(parsed.error.issues[0]?.message ?? 'Revise os campos.');
+      const errors = toFieldErrors(parsed.error.issues);
+      setFieldErrors(errors);
+      setMessage('Revise os campos destacados antes de salvar.');
+      requestAnimationFrame(() => feedbackRef.current?.focus());
       return;
     }
 
+    setFieldErrors({});
     setIsBusy(true);
     setMessage('Salvando perfil institucional…');
     try {
@@ -79,75 +102,83 @@ export function EmployerProfileForm() {
       setMessage(
         error instanceof Error ? error.message : 'Não foi possível salvar.',
       );
+      requestAnimationFrame(() => feedbackRef.current?.focus());
     } finally {
       setIsBusy(false);
     }
   }
 
-  return (
-    <div className="profile-workspace">
-      <aside className="profile-overview employer-overview">
-        <span className="eyebrow">Perfil contratante</span>
-        <h1>Construa confiança antes da primeira vaga</h1>
-        <p>
-          Apresente a organização e a pessoa responsável. Documentos fiscais não
-          são coletados nesta fase.
-        </p>
-        <div className="completion-card">
-          <div>
-            <strong>{profile?.completionPercentage ?? 0}%</strong>
-            <span>do perfil completo</span>
-          </div>
-          <progress
-            aria-label="Conclusão do perfil"
-            max="100"
-            value={profile?.completionPercentage ?? 0}
-          />
-        </div>
-        <div
-          className={`verification-card ${
-            profile?.isVerified ? 'verified' : ''
-          }`}
-        >
-          <span>{profile?.isVerified ? 'Verificado' : 'Não verificado'}</span>
-          <p>
-            {profile?.isVerified
-              ? 'A validação institucional está ativa.'
-              : 'A futura equipe administrativa fará a validação. O próprio contratante não pode alterar este estado.'}
-          </p>
-        </div>
-      </aside>
+  if (isBusy && message === 'Carregando perfil institucional…') {
+    return <LoadingState label="Carregando perfil institucional" />;
+  }
 
-      <form className="profile-form" onSubmit={save}>
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>01</span>
-            <div>
-              <h2>Identificação</h2>
-              <p>Defina como você atua na plataforma.</p>
-            </div>
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+
+  return (
+    <ProfileEditorLayout
+      aside={
+        <ProfileIntro
+          completion={profile?.completionPercentage ?? 0}
+          description="Apresente a organização e a pessoa responsável. Não coletamos documentos fiscais nesta etapa."
+          eyebrow="Perfil contratante"
+          title="Construa confiança antes da primeira vaga"
+        >
+          <div className="rounded-vale-md border border-vale-border bg-vale-neutral-subtle p-4">
+            <Badge tone={profile?.isVerified ? 'success' : 'warning'}>
+              {profile?.isVerified
+                ? 'Verificação institucional ativa'
+                : 'Verificação institucional pendente'}
+            </Badge>
+            <p className="mt-3 text-sm leading-6 text-vale-muted">
+              {profile?.isVerified
+                ? 'A validação institucional está ativa.'
+                : 'A equipe administrativa realizará a análise. Este estado não pode ser alterado por aqui.'}
+            </p>
           </div>
-          <fieldset className="choice-group">
-            <legend>Tipo de contratante</legend>
-            <div className="choice-grid">
+        </ProfileIntro>
+      }
+    >
+      <form className="grid gap-6" noValidate onSubmit={save}>
+        <div ref={feedbackRef} tabIndex={-1}>
+          <Alert
+            title={hasFieldErrors ? 'Revise o perfil' : 'Estado do salvamento'}
+            tone={hasFieldErrors ? 'danger' : 'info'}
+          >
+            {message}
+          </Alert>
+        </div>
+
+        <ProfileSection
+          description="Defina quem está contratando e como entrar em contato."
+          index={1}
+          title="Identificação"
+        >
+          <fieldset disabled={isBusy}>
+            <legend className="text-sm font-extrabold text-vale-ink">
+              Tipo de contratante
+            </legend>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
               {employerProfileTypes.map((type) => (
-                <label className="checkbox-card" key={type}>
-                  <input
-                    checked={draft.type === type}
-                    disabled={isBusy}
-                    name="employer-type"
-                    onChange={() => setDraft({ ...draft, type })}
-                    type="radio"
-                  />
-                  {typeLabels[type]}
-                </label>
+                <RadioCard
+                  checked={draft.type === type}
+                  description={typeDescriptions[type]}
+                  key={type}
+                  label={typeLabels[type]}
+                  name="employer-type"
+                  onChange={() => setDraft({ ...draft, type })}
+                  value={type}
+                />
               ))}
             </div>
           </fieldset>
-          <div className="field-grid">
-            <label>
-              Pessoa responsável
-              <input
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+            <FormField
+              error={fieldErrors.responsibleName}
+              id="responsible-name"
+              label="Pessoa responsável"
+              required
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
@@ -156,10 +187,14 @@ export function EmployerProfileForm() {
                 required
                 value={draft.responsibleName}
               />
-            </label>
-            <label>
-              E-mail de contato
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.contactEmail}
+              id="contact-email"
+              label="E-mail de contato"
+              required
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={254}
                 onChange={(event) =>
@@ -169,10 +204,13 @@ export function EmployerProfileForm() {
                 type="email"
                 value={draft.contactEmail}
               />
-            </label>
-            <label>
-              Telefone <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.contactPhone}
+              id="contact-phone"
+              label={optionalLabel('Telefone')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={30}
                 onChange={(event) =>
@@ -183,10 +221,15 @@ export function EmployerProfileForm() {
                 }
                 value={draft.contactPhone ?? ''}
               />
-            </label>
-            <label>
-              Nome da organização
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.organizationName}
+              hint="Obrigatório para empresa ou organização."
+              id="organization-name"
+              label="Nome da organização"
+              required={draft.type !== 'individual'}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={160}
                 onChange={(event) =>
@@ -198,71 +241,69 @@ export function EmployerProfileForm() {
                 required={draft.type !== 'individual'}
                 value={draft.organizationName ?? ''}
               />
-              <span className="field-help">
-                Opcional somente para pessoa física.
-              </span>
-            </label>
+            </FormField>
           </div>
-        </section>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>02</span>
-            <div>
-              <h2>Contexto institucional</h2>
-              <p>Ajude pessoas candidatas a entender quem está contratando.</p>
-            </div>
-          </div>
-          <div className="field-grid">
-            <label>
-              Segmento <span className="optional-mark">Opcional</span>
-              <input
+        <ProfileSection
+          description="Ajude pessoas candidatas a entender a oportunidade e sua origem."
+          index={2}
+          title="Contexto institucional"
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <FormField
+              error={fieldErrors.segment}
+              id="segment"
+              label={optionalLabel('Segmento')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    segment: nullable(event.target.value),
-                  })
+                  setDraft({ ...draft, segment: nullable(event.target.value) })
                 }
                 placeholder="Ex.: Tecnologia"
                 value={draft.segment ?? ''}
               />
-            </label>
-            <label>
-              Localidade <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              error={fieldErrors.location}
+              id="employer-location"
+              label={optionalLabel('Localidade')}
+            >
+              <TextInput
                 disabled={isBusy}
                 maxLength={120}
                 onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    location: nullable(event.target.value),
-                  })
+                  setDraft({ ...draft, location: nullable(event.target.value) })
                 }
                 placeholder="Cidade, estado ou remoto"
                 value={draft.location ?? ''}
               />
-            </label>
-            <label className="field-span">
-              Site <span className="optional-mark">Opcional</span>
-              <input
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              error={fieldErrors.website}
+              id="website"
+              label={optionalLabel('Site')}
+            >
+              <TextInput
                 disabled={isBusy}
                 onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    website: nullable(event.target.value),
-                  })
+                  setDraft({ ...draft, website: nullable(event.target.value) })
                 }
                 placeholder="https://"
                 type="url"
                 value={draft.website ?? ''}
               />
-            </label>
-            <label className="field-span">
-              Descrição institucional{' '}
-              <span className="optional-mark">Opcional</span>
-              <textarea
+            </FormField>
+            <FormField
+              className="md:col-span-2"
+              error={fieldErrors.description}
+              id="institutional-description"
+              label={optionalLabel('Descrição institucional')}
+            >
+              <TextArea
                 disabled={isBusy}
                 maxLength={2000}
                 onChange={(event) =>
@@ -274,44 +315,39 @@ export function EmployerProfileForm() {
                 rows={7}
                 value={draft.description ?? ''}
               />
-            </label>
+            </FormField>
           </div>
-        </section>
+        </ProfileSection>
 
-        <section className="form-section">
-          <div className="form-section-heading">
-            <span>03</span>
-            <div>
-              <h2>Imagem institucional</h2>
-              <p>Salve o perfil antes do primeiro envio.</p>
-            </div>
-          </div>
+        <ProfileSection
+          description="Arquivos são privados e só podem ser baixados após nova autorização da API."
+          index={3}
+          title="Imagem institucional"
+        >
           {profile ? (
             <ProfileAssetControl
               accept="image/jpeg,image/png,image/webp"
               asset={profile.logo}
-              help="JPEG, PNG ou WebP, até 2 MB."
+              help="JPEG, PNG ou WebP, até 2 MB. Salvar uma nova imagem substitui a versão atual."
               kind="logo"
               label="Logo ou imagem institucional"
               onChange={(logo) => setProfile({ ...profile, logo })}
             />
           ) : (
-            <p className="empty-state">
-              O controle de imagem aparece depois que o perfil for salvo.
-            </p>
+            <Alert title="Salve antes de enviar" tone="info">
+              O controle de imagem aparece depois que o perfil for salvo pela
+              primeira vez.
+            </Alert>
           )}
-        </section>
+        </ProfileSection>
 
-        <div className="form-footer">
-          <p className="profile-message" role="status">
-            {message}
-          </p>
-          <button className="primary-action" disabled={isBusy} type="submit">
-            {isBusy ? 'Aguarde…' : 'Salvar perfil institucional'}
-          </button>
-        </div>
+        <ProfileSaveBar
+          isSaving={isBusy}
+          message={message}
+          submitLabel="Salvar perfil institucional"
+        />
       </form>
-    </div>
+    </ProfileEditorLayout>
   );
 }
 
@@ -345,4 +381,24 @@ function toEmployerInput(profile: EmployerProfile): EmployerProfileInput {
 
 function nullable(value: string): string | null {
   return value.trim() ? value : null;
+}
+
+function optionalLabel(label: string) {
+  return (
+    <>
+      {label}{' '}
+      <span className="font-semibold text-vale-muted">(opcional)</span>
+    </>
+  );
+}
+
+function toFieldErrors(
+  issues: Array<{ message: string; path: PropertyKey[] }>,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const issue of issues) {
+    const path = issue.path.join('.');
+    if (!errors[path]) errors[path] = issue.message;
+  }
+  return errors;
 }

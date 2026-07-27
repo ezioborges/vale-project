@@ -92,18 +92,18 @@ As próximas mudanças devem estender essa base, não criar uma segunda arquitet
 
 | Evidência | Observação |
 | --- | --- |
-| [`apps/api/src/main.ts`](../apps/api/src/main.ts) | Swagger é criado sem condição de ambiente e não há configuração global de headers |
-| [`apps/api/src/auth/auth.controller.ts`](../apps/api/src/auth/auth.controller.ts) | access e refresh usam cookies; não existe token CSRF ou validação de origem |
-| [`apps/api/src/auth/auth.service.ts`](../apps/api/src/auth/auth.service.ts) | rotação é segura, mas o JWT ainda inclui e-mail e o cadastro atravessa operações separadas |
-| [`apps/web/lib/api.ts`](../apps/web/lib/api.ts) | refresh não faz parte de um transporte autenticado central com retry único |
-| [`apps/web/middleware.ts`](../apps/web/middleware.ts) | claims são decodificadas para UX sem validação de assinatura ou expiração |
-| [`apps/api/src/users/user.entity.ts`](../apps/api/src/users/user.entity.ts) | `passwordHash` não usa `select: false` |
-| [`apps/api/src/profiles/profiles.service.ts`](../apps/api/src/profiles/profiles.service.ts) | resposta de candidato é compartilhada entre audiências e inclui os assets do perfil |
-| [`apps/api/src/common/rate-limit/rate-limit.guard.ts`](../apps/api/src/common/rate-limit/rate-limit.guard.ts) | a identidade do limitador é apenas o IP |
-| [`apps/api/src/reports/reports.controller.ts`](../apps/api/src/reports/reports.controller.ts) | criação de denúncia não possui uma política de rate limit |
-| [`apps/api/src/jobs/application-retention.service.ts`](../apps/api/src/jobs/application-retention.service.ts) | purge executa no bootstrap e busca somente os primeiros 100 elegíveis |
-| [`apps/web/next.config.ts`](../apps/web/next.config.ts) | build ignora lint e não define headers de segurança |
-| [`package.json`](../package.json) | existem scripts locais de qualidade, mas não foi encontrado workflow de CI ou E2E |
+| [`apps/api/src/main.ts`](../../apps/api/src/main.ts) | Swagger é criado sem condição de ambiente e não há configuração global de headers |
+| [`apps/api/src/auth/auth.controller.ts`](../../apps/api/src/auth/auth.controller.ts) | access e refresh usam cookies; não existe token CSRF ou validação de origem |
+| [`apps/api/src/auth/auth.service.ts`](../../apps/api/src/auth/auth.service.ts) | rotação é segura, mas o JWT ainda inclui e-mail e o cadastro atravessa operações separadas |
+| [`apps/web/lib/api.ts`](../../apps/web/lib/api.ts) | refresh não faz parte de um transporte autenticado central com retry único |
+| [`apps/web/middleware.ts`](../../apps/web/middleware.ts) | claims são decodificadas para UX sem validação de assinatura ou expiração |
+| [`apps/api/src/users/user.entity.ts`](../../apps/api/src/users/user.entity.ts) | `passwordHash` não usa `select: false` |
+| [`apps/api/src/profiles/profiles.service.ts`](../../apps/api/src/profiles/profiles.service.ts) | resposta de candidato é compartilhada entre audiências e inclui os assets do perfil |
+| [`apps/api/src/common/rate-limit/rate-limit.guard.ts`](../../apps/api/src/common/rate-limit/rate-limit.guard.ts) | a identidade do limitador é apenas o IP |
+| [`apps/api/src/reports/reports.controller.ts`](../../apps/api/src/reports/reports.controller.ts) | criação de denúncia não possui uma política de rate limit |
+| [`apps/api/src/jobs/application-retention.service.ts`](../../apps/api/src/jobs/application-retention.service.ts) | purge executa no bootstrap e busca somente os primeiros 100 elegíveis |
+| [`apps/web/next.config.ts`](../../apps/web/next.config.ts) | build ignora lint e não define headers de segurança |
+| [`package.json`](../../package.json) | existem scripts locais de qualidade, mas não foi encontrado workflow de CI ou E2E |
 
 ### Interpretação das prioridades
 
@@ -118,7 +118,7 @@ As próximas mudanças devem estender essa base, não criar uma segunda arquitet
 Objetivo: tornar reproduzível o estado que hoje só foi validado localmente.
 
 Plano executável:
-[`14-plano-acao-etapa-0.md`](14-plano-acao-etapa-0.md).
+[`14-plano-acao-etapa-0.md`](etapas/14-plano-acao-etapa-0.md).
 
 | Entrega | Ação | Critério de aceite |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ Marco: o commit promovido foi produzido e validado pelo mesmo pipeline registrad
 
 Objetivo: reduzir a superfície de ataque antes de evoluir funcionalidades.
 
-Execução versionada: [`15-execucao-etapa-1.md`](15-execucao-etapa-1.md).
+Execução versionada: [`15-execucao-etapa-1.md`](../15-execucao-etapa-1.md).
 
 ### Cookies, CSRF e JWT
 
@@ -182,7 +182,7 @@ Marco: uma suíte de integração comprova cookies, CSRF, CORS, headers, JWT e e
 
 Objetivo: fazer a sessão de 30 dias se comportar como planejado sem ampliar a exposição de dados.
 
-Execução versionada: [`16-execucao-etapa-2.md`](16-execucao-etapa-2.md).
+Execução versionada: [`16-execucao-etapa-2.md`](../16-execucao-etapa-2.md).
 
 ### Cliente HTTP único
 
@@ -224,7 +224,7 @@ Marco: testes de contrato negativos comprovam que cada papel recebe apenas os ca
 
 Objetivo: controlar custo, spam e conteúdo hostil de forma consistente.
 
-Execução versionada: [`17-execucao-etapa-3.md`](17-execucao-etapa-3.md).
+Execução versionada: [`17-execucao-etapa-3.md`](../17-execucao-etapa-3.md).
 
 ### Rate limiting
 
@@ -272,7 +272,7 @@ e elegível é removido dentro do SLA definido.
 
 Objetivo: transformar políticas documentadas em capacidades reais e recuperáveis.
 
-Plano executável: [`18-plano-execucao-etapa-4.md`](18-plano-execucao-etapa-4.md).
+Plano executável: [`18-plano-execucao-etapa-4.md`](etapas/18-plano-execucao-etapa-4.md).
 
 ### Direitos do titular e ciclo de dados
 

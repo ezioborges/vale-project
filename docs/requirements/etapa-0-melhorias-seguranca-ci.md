@@ -1,7 +1,7 @@
 # Execução da Etapa 0 — baseline, CI e dependências
 
-- Plano de origem: [`14-plano-acao-etapa-0.md`](../14-plano-acao-etapa-0.md)
-- Plano transversal: [`13-plano-melhorias-seguranca-fluxo.md`](../13-plano-melhorias-seguranca-fluxo.md)
+- Plano de origem: [`14-plano-acao-etapa-0.md`](../planos-de-acao/etapas/14-plano-acao-etapa-0.md)
+- Plano transversal: [`13-plano-melhorias-seguranca-fluxo.md`](../planos-de-acao/13-plano-melhorias-seguranca-fluxo.md)
 - Estado: Concluída após validação local e configuração do pipeline
 
 ## Escopo entregue

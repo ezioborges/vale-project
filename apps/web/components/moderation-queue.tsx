@@ -9,11 +9,23 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ApiRequestError, decideJob, listModerationJobs } from '@/lib/api';
 
-const statusLabels: Partial<Record<JobStatus, string>> = {
+import { JobMetadata, JobStatusBadge } from './market-status';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Alert, EmptyState, LoadingState } from './ui/feedback';
+import { FormField, Select, TextArea } from './ui/form-field';
+import { PageHeading } from './ui/page-heading';
+
+const queueStatusLabels: Partial<Record<JobStatus, string>> = {
   pending_review: 'Pendentes',
   changes_requested: 'Ajustes solicitados',
   approved: 'Aprovadas',
   rejected: 'Rejeitadas',
+};
+
+type Feedback = {
+  message: string;
+  tone: 'danger' | 'success';
 };
 
 export function ModerationQueue() {
@@ -21,19 +33,21 @@ export function ModerationQueue() {
   const [jobs, setJobs] = useState<ManagedJob[]>([]);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setMessage('');
     try {
       setJobs((await listModerationJobs(status)).items);
     } catch (error) {
-      setMessage(
-        error instanceof ApiRequestError
-          ? error.message
-          : 'Não foi possível carregar a fila.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof ApiRequestError
+            ? error.message
+            : 'Não foi possível carregar a fila.',
+      });
     } finally {
       setLoading(false);
     }
@@ -46,117 +60,165 @@ export function ModerationQueue() {
   async function decide(job: ManagedJob, decision: JobModerationDecision) {
     const reason = reasons[job.id]?.trim();
     if (decision !== 'approve' && (!reason || reason.length < 10)) {
-      setMessage('Informe um motivo claro com pelo menos 10 caracteres.');
+      setFeedback({
+        tone: 'danger',
+        message: 'Informe um motivo claro com pelo menos 10 caracteres.',
+      });
       return;
     }
-    setMessage('');
+
+    setDecidingId(job.id);
     try {
       await decideJob(job.id, decision, reason);
-      setMessage('Decisão registrada com sucesso.');
+      setFeedback({
+        tone: 'success',
+        message: 'Decisão registrada com sucesso.',
+      });
       await load();
     } catch (error) {
-      setMessage(
-        error instanceof ApiRequestError
-          ? error.message
-          : 'A decisão não pôde ser registrada.',
-      );
+      setFeedback({
+        tone: 'danger',
+        message:
+          error instanceof ApiRequestError
+            ? error.message
+            : 'A decisão não pôde ser registrada.',
+      });
       await load();
+    } finally {
+      setDecidingId(null);
     }
   }
 
   return (
-    <section className="management-page moderation-page">
-      <div className="management-hero">
-        <span className="eyebrow">Governança antes da publicação</span>
-        <h1>Fila de moderação de vagas</h1>
-        <p>
-          Revise conteúdo, transparência salarial, acessibilidade e compromisso
-          inclusivo. Decisões concorrentes são protegidas pela API.
-        </p>
-      </div>
+    <section className="mx-auto max-w-vale-content">
+      <PageHeading
+        as="h1"
+        description="Revise conteúdo, transparência salarial, acessibilidade e compromisso inclusivo antes de publicar. A API protege decisões concorrentes."
+        eyebrow="Governança antes da publicação"
+        title="Fila de moderação de vagas"
+      />
 
-      <div className="management-toolbar">
-        <label>
-          Estado da fila
-          <select
-            value={status}
+      <Card className="mt-8 flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+        <FormField
+          className="w-full sm:max-w-72"
+          id="moderation-status"
+          label="Estado da fila"
+        >
+          <Select
             onChange={(event) => setStatus(event.target.value as JobStatus)}
+            value={status}
           >
-            {Object.entries(statusLabels).map(([value, label]) => (
+            {Object.entries(queueStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
-        </label>
-        <strong>{jobs.length} itens nesta página</strong>
-      </div>
-
-      {message && (
-        <p className="notice" role="status">
-          {message}
+          </Select>
+        </FormField>
+        <p aria-live="polite" className="text-sm font-bold text-vale-muted">
+          {jobs.length}{' '}
+          {jobs.length === 1 ? 'item nesta página' : 'itens nesta página'}
         </p>
-      )}
-      {loading && <div className="empty-state-card">Carregando fila…</div>}
-      {!loading && jobs.length === 0 && (
-        <div className="empty-state-card">
-          <strong>Fila limpa neste estado.</strong>
-          <span>Novos envios aparecerão em ordem de chegada.</span>
+      </Card>
+
+      {feedback ? (
+        <Alert
+          className="mt-6"
+          title={
+            feedback.tone === 'success'
+              ? 'Decisão registrada'
+              : 'Não foi possível concluir'
+          }
+          tone={feedback.tone}
+        >
+          {feedback.message}
+        </Alert>
+      ) : null}
+      {loading ? (
+        <div className="mt-8">
+          <LoadingState label="Carregando fila" />
         </div>
-      )}
+      ) : null}
+      {!loading && jobs.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            description="Novos envios aparecerão em ordem de chegada."
+            title="Fila limpa neste estado"
+          />
+        </div>
+      ) : null}
 
-      <div className="moderation-list">
+      <div className="mt-8 grid gap-6">
         {jobs.map((job) => (
-          <article className="moderation-card" key={job.id}>
-            <div className="moderation-card-summary">
-              <span className={`status-badge status-${job.status}`}>
-                {statusLabels[job.status] ?? job.status}
-              </span>
-              <h2>{job.title}</h2>
-              <p>
-                {job.employer.displayName} · {job.area} · {job.location}
+          <Card className="grid gap-6 p-5 sm:p-7" key={job.id}>
+            <div className="border-b border-vale-border pb-6">
+              <JobStatusBadge status={job.status} />
+              <h2 className="mt-3 text-2xl font-black tracking-[-0.04em] text-vale-ink">
+                {job.title}
+              </h2>
+              <p className="mt-2 text-sm font-semibold text-vale-muted">
+                {job.employer.displayName} · {job.location}
               </p>
-              <div className="job-card-meta">
-                <span>{job.workMode}</span>
-                <span>{job.contractType}</span>
-                <span>{job.seniority}</span>
-              </div>
-            </div>
-            <div className="moderation-copy">
-              <section>
-                <h3>Descrição</h3>
-                <p>{job.description}</p>
-              </section>
-              {job.requirements && (
-                <section>
-                  <h3>Requisitos</h3>
-                  <p>{job.requirements}</p>
-                </section>
-              )}
-              <section>
-                <h3>Transparência salarial</h3>
-                <p>
-                  {job.salaryMin !== null && job.salaryMax !== null
-                    ? `R$ ${job.salaryMin.toLocaleString('pt-BR')} – R$ ${job.salaryMax.toLocaleString('pt-BR')}`
-                    : job.salaryHiddenReason}
-                </p>
-              </section>
-              {job.accessibilityInfo && (
-                <section>
-                  <h3>Acessibilidade</h3>
-                  <p>{job.accessibilityInfo}</p>
-                </section>
-              )}
+              <JobMetadata
+                area={job.area}
+                className="mt-4"
+                contractType={job.contractType}
+                seniority={job.seniority}
+                workMode={job.workMode}
+              />
             </div>
 
-            {job.status === 'pending_review' && (
-              <div className="moderation-actions">
-                <label>
-                  Motivo para ajuste ou rejeição
-                  <textarea
-                    rows={4}
+            <div className="grid gap-4 md:grid-cols-2">
+              <ModerationContent title="Descrição">
+                {job.description}
+              </ModerationContent>
+              {job.requirements ? (
+                <ModerationContent title="Requisitos">
+                  {job.requirements}
+                </ModerationContent>
+              ) : null}
+              <ModerationContent title="Transparência salarial">
+                {job.salaryMin !== null && job.salaryMax !== null
+                  ? `R$ ${job.salaryMin.toLocaleString('pt-BR')} – R$ ${job.salaryMax.toLocaleString('pt-BR')}`
+                  : (job.salaryHiddenReason ?? 'Faixa não informada')}
+              </ModerationContent>
+              <ModerationContent title="Compromisso inclusivo">
+                {job.inclusionCommitment
+                  ? 'Confirmado pela organização.'
+                  : 'Não foi confirmado pela organização.'}
+              </ModerationContent>
+              {job.accessibilityInfo ? (
+                <ModerationContent title="Acessibilidade e adaptações">
+                  {job.accessibilityInfo}
+                </ModerationContent>
+              ) : null}
+            </div>
+
+            {job.status === 'pending_review' ? (
+              <section
+                aria-labelledby={`decision-${job.id}`}
+                className="grid gap-5 rounded-vale-md border border-vale-border bg-vale-neutral-subtle p-4 sm:p-5"
+              >
+                <div>
+                  <h3
+                    className="font-extrabold text-vale-ink"
+                    id={`decision-${job.id}`}
+                  >
+                    Registrar decisão
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-vale-muted">
+                    Aprovar publica a vaga. Solicitar ajuste ou rejeitar exige
+                    um motivo objetivo para a organização.
+                  </p>
+                </div>
+                <FormField
+                  hint="Obrigatório para solicitar ajuste ou rejeitar; informe o trecho e a correção esperada."
+                  id={`moderation-reason-${job.id}`}
+                  label="Motivo da decisão"
+                >
+                  <TextArea
+                    disabled={decidingId === job.id}
                     maxLength={1000}
-                    value={reasons[job.id] ?? ''}
                     onChange={(event) =>
                       setReasons((current) => ({
                         ...current,
@@ -164,39 +226,61 @@ export function ModerationQueue() {
                       }))
                     }
                     placeholder="Seja objetivo, indique o trecho e a correção esperada."
+                    rows={4}
+                    value={reasons[job.id] ?? ''}
                   />
-                </label>
-                <div className="inline-actions">
-                  <button
-                    className="primary-action"
+                </FormField>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    loading={decidingId === job.id}
+                    loadingLabel="Registrando decisão"
                     onClick={() => void decide(job, 'approve')}
                   >
                     Aprovar
-                  </button>
-                  <button
-                    className="secondary-action"
+                  </Button>
+                  <Button
+                    disabled={decidingId === job.id}
                     onClick={() => void decide(job, 'request_changes')}
+                    variant="secondary"
                   >
                     Solicitar ajustes
-                  </button>
-                  <button
-                    className="danger-action"
+                  </Button>
+                  <Button
+                    disabled={decidingId === job.id}
                     onClick={() => void decide(job, 'reject')}
+                    variant="danger"
                   >
                     Rejeitar
-                  </button>
+                  </Button>
                 </div>
-              </div>
-            )}
-            {job.moderationReason && (
-              <div className="moderation-reason">
-                <strong>Motivo registrado</strong>
-                <p>{job.moderationReason}</p>
-              </div>
-            )}
-          </article>
+              </section>
+            ) : null}
+
+            {job.moderationReason ? (
+              <Alert title="Motivo registrado" tone="warning">
+                {job.moderationReason}
+              </Alert>
+            ) : null}
+          </Card>
         ))}
       </div>
+    </section>
+  );
+}
+
+function ModerationContent({
+  children,
+  title,
+}: {
+  children: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-vale-md border border-vale-border bg-vale-surface p-4">
+      <h3 className="text-sm font-extrabold text-vale-ink">{title}</h3>
+      <p className="mt-2 whitespace-pre-line text-sm leading-6 text-vale-muted">
+        {children}
+      </p>
     </section>
   );
 }

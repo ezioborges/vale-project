@@ -1,7 +1,7 @@
 # Execução da Fase 1 — identidade, termos e RBAC
 
 - Data da verificação: 2026-07-24
-- Plano de origem: [`../09-plano-de-acao.md`](../09-plano-de-acao.md)
+- Plano de origem: [`../planos-de-acao/09-plano-de-acao-mvp.md`](../planos-de-acao/09-plano-de-acao-mvp.md)
 - Estado: concluída
 
 ## Escopo entregue
