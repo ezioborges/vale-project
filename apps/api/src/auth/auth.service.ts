@@ -16,6 +16,8 @@ import { AuditService } from '../audit/audit.service';
 import { JwtPayload } from '../common/auth/authenticated-user';
 import { Env } from '../common/config/env.validation';
 import { EmailService } from '../email/email.service';
+import { OutboxDispatcherService } from '../outbox/outbox-dispatcher.service';
+import { OutboxService } from '../outbox/outbox.service';
 import { TermsService } from '../terms/terms.service';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { User } from '../users/user.entity';
@@ -61,6 +63,8 @@ export class AuthService {
     @InjectRepository(PasswordResetToken)
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
     private readonly auditService: AuditService,
+    private readonly outbox: OutboxService,
+    private readonly outboxDispatcher: OutboxDispatcherService,
   ) {}
 
   async register(
@@ -79,41 +83,62 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.createPublicUser({
-      displayName: input.displayName,
-      email: input.email,
-      password: input.password,
-      role: input.role,
+    const passwordHash = await argon2.hash(input.password);
+    const result = await this.dataSource.transaction(async (manager) => {
+      const user = await this.usersService.createPublicUser(
+        {
+          displayName: input.displayName,
+          email: input.email,
+          password: input.password,
+          passwordHash,
+          role: input.role,
+        },
+        manager,
+      );
+      await this.termsService.acceptAll(
+        user.id,
+        currentDocuments,
+        metadata,
+        manager,
+      );
+      const emailVerificationToken = await this.createEmailVerificationToken(
+        user.id,
+        manager,
+      );
+      const tokens = await this.issueTokens(user, metadata.ipAddress, manager);
+      await this.recordAuthEvent(
+        user.id,
+        'auth.registration_succeeded',
+        { outcome: 'success' },
+        metadata,
+        manager,
+      );
+      await this.outbox.enqueue(
+        {
+          messageType: 'email_verification',
+          aggregateType: 'user',
+          aggregateId: user.id,
+          deduplicationKey: `email-verification:${user.id}:${this.hashToken(emailVerificationToken)}`,
+          templateVersion: 'email-verification-v1',
+          payload: {
+            displayName: user.displayName,
+            email: user.email,
+            role: input.role,
+            token: emailVerificationToken,
+          },
+        },
+        manager,
+      );
+      return { tokens, user };
     });
 
-    await this.termsService.acceptAll(user.id, currentDocuments, metadata);
-
-    const emailVerificationToken = await this.createEmailVerificationToken(
-      user.id,
-    );
-    try {
-      await this.emailService.sendEmailVerification({
-        displayName: user.displayName,
-        email: user.email,
-        role: input.role,
-        token: emailVerificationToken,
-      });
-    } catch {
-      this.logger.error(
-        'Initial email verification delivery failed; the user can request a resend.',
-      );
+    if (this.configService.get('OUTBOX_DISPATCH_ENABLED', { infer: true })) {
+      await this.outboxDispatcher.dispatchCycle();
     }
-    const tokens = await this.issueTokens(user, metadata.ipAddress);
-    await this.recordAuthEventSafely(
-      user.id,
-      'auth.registration_succeeded',
-      { outcome: 'success' },
-      metadata,
-    );
 
     return {
-      ...tokens,
-      user: this.usersService.toResponse(user),
+      ...result.tokens,
+      user: this.usersService.toResponse(result.user),
     };
   }
 
@@ -312,17 +337,32 @@ export class AuthService {
       return { message: 'If verification is needed, an email was sent.' };
     }
 
-    if (user.role !== 'candidate' && user.role !== 'employer') {
+    const role = user.role;
+    if (role !== 'candidate' && role !== 'employer') {
       return { message: 'If verification is needed, an email was sent.' };
     }
 
-    const token = await this.createEmailVerificationToken(user.id);
-    await this.emailService.sendEmailVerification({
-      displayName: user.displayName,
-      email: user.email,
-      role: user.role,
-      token,
+    await this.dataSource.transaction(async (manager) => {
+      const token = await this.createEmailVerificationToken(user.id, manager);
+      await this.outbox.enqueueEmail(manager, {
+        aggregateId: user.id,
+        deduplicationKey: this.outbox.deduplicationKey(
+          'email-verification',
+          user.id,
+          token,
+        ),
+        templateVersion: 'email-verification-v1',
+        message: this.emailService.emailVerificationMessage({
+          displayName: user.displayName,
+          email: user.email,
+          role,
+          token,
+        }),
+      });
     });
+    if (this.configService.get('OUTBOX_DISPATCH_ENABLED', { infer: true })) {
+      await this.outboxDispatcher.dispatchOnce();
+    }
 
     return { message: 'If verification is needed, an email was sent.' };
   }
@@ -383,15 +423,25 @@ export class AuthService {
       return response;
     }
 
-    const token = await this.createPasswordResetToken(user.id);
-    try {
-      await this.emailService.sendPasswordReset({
-        displayName: user.displayName,
-        email: user.email,
-        token,
+    await this.dataSource.transaction(async (manager) => {
+      const token = await this.createPasswordResetToken(user.id, manager);
+      await this.outbox.enqueueEmail(manager, {
+        aggregateId: user.id,
+        deduplicationKey: this.outbox.deduplicationKey(
+          'password-reset',
+          user.id,
+          token,
+        ),
+        templateVersion: 'password-reset-v1',
+        message: this.emailService.passwordResetMessage({
+          displayName: user.displayName,
+          email: user.email,
+          token,
+        }),
       });
-    } catch {
-      this.logger.error('Password reset email delivery failed.');
+    });
+    if (this.configService.get('OUTBOX_DISPATCH_ENABLED', { infer: true })) {
+      await this.outboxDispatcher.dispatchOnce();
     }
 
     return response;
@@ -502,18 +552,24 @@ export class AuthService {
     return { accessToken, expiresInSeconds };
   }
 
-  private async createEmailVerificationToken(userId: string): Promise<string> {
+  private async createEmailVerificationToken(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<string> {
     const token = this.generateOpaqueToken();
     const ttlHours = this.configService.get('EMAIL_VERIFICATION_TTL_HOURS', {
       infer: true,
     });
 
-    await this.emailTokenRepository.update(
+    const repository = manager
+      ? manager.getRepository(EmailVerificationToken)
+      : this.emailTokenRepository;
+    await repository.update(
       { userId, consumedAt: IsNull() },
       { consumedAt: new Date() },
     );
-    await this.emailTokenRepository.save(
-      this.emailTokenRepository.create({
+    await repository.save(
+      repository.create({
         userId,
         tokenHash: this.hashToken(token),
         expiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
@@ -524,18 +580,24 @@ export class AuthService {
     return token;
   }
 
-  private async createPasswordResetToken(userId: string): Promise<string> {
+  private async createPasswordResetToken(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<string> {
     const token = this.generateOpaqueToken();
     const ttlMinutes = this.configService.get('PASSWORD_RESET_TTL_MINUTES', {
       infer: true,
     });
 
-    await this.passwordResetTokenRepository.update(
+    const repository = manager
+      ? manager.getRepository(PasswordResetToken)
+      : this.passwordResetTokenRepository;
+    await repository.update(
       { userId, consumedAt: IsNull() },
       { consumedAt: new Date() },
     );
-    await this.passwordResetTokenRepository.save(
-      this.passwordResetTokenRepository.create({
+    await repository.save(
+      repository.create({
         userId,
         tokenHash: this.hashToken(token),
         expiresAt: new Date(Date.now() + ttlMinutes * 60 * 1000),

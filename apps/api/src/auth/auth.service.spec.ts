@@ -4,10 +4,14 @@ import * as argon2 from 'argon2';
 
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../email/email.service';
+import { OutboxDispatcherService } from '../outbox/outbox-dispatcher.service';
+import { OutboxService } from '../outbox/outbox.service';
 import { TermsService } from '../terms/terms.service';
 import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
+import { EmailVerificationToken } from './email-verification-token.entity';
+import { RefreshToken } from './refresh-token.entity';
 
 const testUser = {
   id: '9d468807-fd6d-4be7-b16d-c067f17c0501',
@@ -74,12 +78,23 @@ describe('AuthService', () => {
     acceptAll: jest.fn(),
   } as unknown as TermsService;
   const emailService = {
+    emailVerificationMessage: jest.fn((input) => input),
+    passwordResetMessage: jest.fn((input) => input),
     sendEmailVerification: jest.fn(),
     sendPasswordReset: jest.fn(),
   } as unknown as EmailService;
   const auditService = {
     record: jest.fn(),
   } as unknown as AuditService;
+  const outbox = {
+    enqueue: jest.fn(),
+    deduplicationKey: jest.fn(() => 'outbox-key'),
+    enqueueEmail: jest.fn(),
+  } as unknown as OutboxService;
+  const outboxDispatcher = {
+    dispatchCycle: jest.fn(),
+    dispatchOnce: jest.fn(),
+  } as unknown as OutboxDispatcherService;
 
   const createRepository = () => ({
     create: jest.fn((input: object) => input),
@@ -104,11 +119,22 @@ describe('AuthService', () => {
       usersService,
       termsService,
       emailService,
-      {} as never,
+      {
+        transaction: async (callback: (manager: object) => unknown) =>
+          callback({
+            getRepository: (entity: unknown) => {
+              if (entity === RefreshToken) return refreshRepository;
+              if (entity === EmailVerificationToken) return emailRepository;
+              return passwordRepository;
+            },
+          }),
+      } as never,
       refreshRepository as never,
       emailRepository as never,
       passwordRepository as never,
       auditService,
+      outbox,
+      outboxDispatcher,
     );
   });
 
@@ -130,6 +156,7 @@ describe('AuthService', () => {
         displayName: 'Pessoa Candidata',
         role: 'candidate',
       }),
+      expect.anything(),
     );
     expect(termsService.acceptAll).toHaveBeenCalledWith(
       testUser.id,
@@ -139,9 +166,14 @@ describe('AuthService', () => {
         guidelines: 'guidelines-current',
       },
       expect.objectContaining({ userAgent: 'jest' }),
+      expect.anything(),
     );
-    expect(emailService.sendEmailVerification).toHaveBeenCalledWith(
-      expect.objectContaining({ email: testUser.email }),
+    expect(outbox.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregateId: testUser.id,
+        templateVersion: 'email-verification-v1',
+      }),
+      expect.anything(),
     );
     expect(response).not.toHaveProperty('devEmailVerificationToken');
     expect(auditService.record).toHaveBeenCalledWith(
@@ -149,7 +181,7 @@ describe('AuthService', () => {
         action: 'auth.registration_succeeded',
         context: { outcome: 'success' },
       }),
-      undefined,
+      expect.anything(),
     );
     expect(refreshRepository.save).toHaveBeenCalledTimes(1);
     expect(jwtService.signAsync).toHaveBeenCalledWith(
@@ -225,6 +257,6 @@ describe('AuthService', () => {
     const present = await service.requestPasswordReset(testUser.email);
 
     expect(absent).toEqual(present);
-    expect(emailService.sendPasswordReset).toHaveBeenCalledTimes(1);
+    expect(outbox.enqueueEmail).toHaveBeenCalledTimes(1);
   });
 });

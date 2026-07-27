@@ -6,10 +6,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { Env } from './common/config/env.validation';
 import { configureHttpApp } from './common/http/http.config';
+import { JsonLoggerService } from './common/observability/json-logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService<Env, true>);
+
+  app.useLogger(app.get(JsonLoggerService));
 
   configureHttpApp(app, config);
 

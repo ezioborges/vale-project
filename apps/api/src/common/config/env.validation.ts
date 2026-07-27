@@ -13,6 +13,7 @@ export const LOCAL_DEFAULTS = {
   DATABASE_NAME: 'vale_project',
   JWT_ACCESS_SECRET: 'dev-access-secret-change-before-production',
   EMAIL_FROM: 'no-reply@local.vale.test',
+  OUTBOX_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
 } as const;
 
 export const envSchema = z
@@ -65,16 +66,36 @@ export const envSchema = z
     EMAIL_FROM: z.string().email().default(LOCAL_DEFAULTS.EMAIL_FROM),
     EMAIL_HTTP_ENDPOINT: z.string().url().optional(),
     EMAIL_HTTP_TOKEN: z.string().min(16).optional(),
-    OUTBOX_ENCRYPTION_KEY: z.string().min(1).optional(),
-    OUTBOX_DISPATCH_ENABLED: booleanString.default(false),
+    OUTBOX_ENCRYPTION_KEY: z
+      .string()
+      .min(1)
+      .default(LOCAL_DEFAULTS.OUTBOX_ENCRYPTION_KEY),
+    OUTBOX_KEY_VERSION: z.string().min(1).max(32).default('v1'),
+    OUTBOX_DISPATCH_ENABLED: booleanString.default('false'),
     OUTBOX_POLL_INTERVAL_SECONDS: z.coerce
       .number()
       .int()
       .min(5)
       .max(3600)
       .default(30),
+    OUTBOX_DISPATCH_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(20),
+    OUTBOX_LEASE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(10)
+      .max(3600)
+      .default(120),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
-    IDEMPOTENCY_REQUIRED: booleanString.default(false),
+    IDEMPOTENCY_REQUIRED: booleanString.default('false'),
+    PRIVACY_GOVERNANCE_APPROVED: booleanString.default('false'),
+    PRIVACY_EXPORT_ENABLED: booleanString.default('false'),
+    ACCOUNT_DELETION_ENABLED: booleanString.default('false'),
+    ERASURE_DRY_RUN: booleanString.default('true'),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     PROFILE_STORAGE_ROOT: z.string().min(1).default('.data/profile-uploads'),
     FILE_SCAN_DRIVER: z.enum(['disabled', 'clamav']).default('disabled'),
@@ -210,6 +231,18 @@ export const envSchema = z
       });
     }
 
+    if (
+      (env.PRIVACY_EXPORT_ENABLED || env.ACCOUNT_DELETION_ENABLED) &&
+      !env.PRIVACY_GOVERNANCE_APPROVED
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Privacy export and account deletion require recorded governance approval.',
+        path: ['PRIVACY_GOVERNANCE_APPROVED'],
+      });
+    }
+
     if (env.NODE_ENV !== 'production') {
       return;
     }
@@ -232,11 +265,11 @@ export const envSchema = z
       });
     }
 
-    if (!env.OUTBOX_ENCRYPTION_KEY) {
+    if (env.OUTBOX_ENCRYPTION_KEY === LOCAL_DEFAULTS.OUTBOX_ENCRYPTION_KEY) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          'OUTBOX_ENCRYPTION_KEY is required in production to protect transient notification data.',
+          'OUTBOX_ENCRYPTION_KEY must not use the local default in production.',
         path: ['OUTBOX_ENCRYPTION_KEY'],
       });
     }
@@ -286,6 +319,7 @@ export const envSchema = z
       'DATABASE_NAME',
       'JWT_ACCESS_SECRET',
       'EMAIL_FROM',
+      'OUTBOX_ENCRYPTION_KEY',
     ];
 
     for (const key of forbiddenProductionDefaults) {
@@ -306,7 +340,10 @@ export const envSchema = z
       });
     }
 
-    if (env.EMAIL_HTTP_ENDPOINT && !env.EMAIL_HTTP_ENDPOINT.startsWith('https://')) {
+    if (
+      env.EMAIL_HTTP_ENDPOINT &&
+      !env.EMAIL_HTTP_ENDPOINT.startsWith('https://')
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'EMAIL_HTTP_ENDPOINT must use HTTPS in production.',

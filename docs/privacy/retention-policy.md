@@ -1,19 +1,18 @@
 # Matriz de retenção e destino final
 
-Esta é uma matriz de controle, não uma decisão jurídica. Onde não houver aprovação, a aplicação
-não deve apagar, anonimizar nem prometer eliminação em prazo determinado.
+Status: bloqueada para automação destrutiva. Este documento registra a decisão que ainda precisa
+ser tomada; não fixa prazos jurídicos por suposição.
 
-| Conjunto | Gatilho | Prazo | Destino | Exceção/evidência | Estado |
-| --- | --- | --- | --- | --- | --- |
-| conta e perfil | encerramento/pedido | `PENDENTE_APROVACAO` | excluir/anonimizar por plano versionado | obrigação legal, defesa ou fraude | bloqueia exclusão |
-| tokens transitórios | consumo/expiração | TTL técnico existente | limpeza segura | investigação aprovada | revisão pendente |
-| aceites e auditoria | término da relação | `PENDENTE_APROVACAO` | preservar mínimo ou anonimizar | prova, segurança e defesa | bloqueia job |
-| currículos/snapshots | fim da vaga/candidatura | `PENDENTE_APROVACAO` | excluir objeto e metadata | retenção aprovada por processo | bloqueia alteração do prazo |
-| denúncias/decisões | encerramento da moderação | `PENDENTE_APROVACAO` | restringir/anonimizar | evidência de segurança | bloqueia eliminação |
-| outbox e exportação | envio/download/expiração | `PENDENTE_APROVACAO` | apagar payload/artefato | protocolo e hash mínimos | bloqueia limpeza automática |
-| idempotência | expiração da chave | `PENDENTE_APROVACAO` | apagar registro mínimo | execução ativa | bloqueia limpeza automática |
-| logs/métricas/backups | geração/backup | `PENDENTE_APROVACAO` | expirar conforme provedor | incidente/restauração | bloqueia produção |
+| Conjunto | Gatilho | Prazo | Destino | Exceção | Owner | Estado |
+| --- | --- | --- | --- | --- | --- | --- |
+| conta e perfil | exclusão, encerramento ou inatividade | `PENDENTE_APROVACAO` | excluir/anonimizar conforme plano versionado | obrigação legal, defesa de direitos ou fraude documentada | Jurídico + Produto | bloqueia executor de exclusão |
+| tokens | expiração, consumo, revogação | TTL técnico configurado; limpeza definitiva `PENDENTE_APROVACAO` | eliminar | investigação de incidente aprovada | Segurança | não ampliar TTL silenciosamente |
+| aceites obrigatórios | término da relação | `PENDENTE_APROVACAO` | preservar ou reduzir contexto aprovado | obrigação de prova | Jurídico | não chamar de consentimento |
+| snapshots de currículo | estado terminal e prazo técnico atual | configuração atual; política jurídica `PENDENTE_APROVACAO` | eliminar objeto e metadado idempotentemente | litígio/obrigação documentada | Jurídico + Produto | job atual não substitui aprovação |
+| denúncias, decisões e auditoria | conclusão do caso | `PENDENTE_APROVACAO` | reduzir, anonimizar ou preservar evidência mínima | segurança/defesa de direitos | Segurança + Jurídico | requer regra por categoria |
+| outbox, exportações e idempotência | entrega, expiração ou fim de lease | `PENDENTE_APROVACAO` | apagar payload transitório; preservar resultado mínimo aprovado | incidente em aberto | Engenharia + Segurança | D-12 bloqueia job de limpeza |
+| logs, métricas e backups | ingestão/backup concluído | `PENDENTE_APROVACAO` | expirar no provedor; backups nunca são alterados in place | recuperação aprovada | Operações | D-08/D-09 bloqueiam produção |
 
-Uma mudança nesta matriz deve ter versão, aprovador, data, testes de dry-run e evidência de que o
-job executou a regra aprovada. Backups não são modificados; após restauração, aplica-se o ledger de
-eliminações antes de liberar acesso.
+Toda execução futura deve gerar evidência de dry-run, contagem, regra versionada, ator/sistema,
+data e resultado. Uma retenção parcial só é válida com `reason_code` aprovado, jamais com erro
+técnico genérico.

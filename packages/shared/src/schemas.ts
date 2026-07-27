@@ -543,3 +543,24 @@ export const auditEventPageSchema = paginationSchema.extend({
 });
 export type AuditEventRecord = z.infer<typeof auditEventSchema>;
 export type AuditEventPage = z.infer<typeof auditEventPageSchema>;
+
+export const privacySummarySchema = z.object({
+  account: z.object({
+    correctionPath: z.string().startsWith('/'),
+    exportAvailable: z.boolean(),
+    deletionAvailable: z.boolean(),
+    optionalConsentAvailable: z.boolean(),
+  }),
+  processing: z.array(
+    z.object({
+      category: z.string().min(1),
+      purpose: z.string().min(1),
+      status: z.literal('pending_approval'),
+    }),
+  ),
+  assistedChannel: z.object({
+    status: z.literal('pending_approval'),
+  }),
+});
+
+export type PrivacySummary = z.infer<typeof privacySummarySchema>;

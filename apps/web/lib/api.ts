@@ -22,6 +22,7 @@ import {
   profileSchema,
   publicJobPageSchema,
   publicJobSchema,
+  privacySummarySchema,
   receivedApplicationPageSchema,
   receivedApplicationSchema,
   registrationConfigSchema,
@@ -52,6 +53,7 @@ import {
   type ProfileVisibility,
   type PublicJob,
   type PublicJobPage,
+  type PrivacySummary,
   type ReceivedApplication,
   type ReceivedApplicationPage,
   type RegistrationConfig,
@@ -427,6 +429,15 @@ export function getCurrentUser(fetcher?: Fetcher): Promise<UserResponse> {
   return apiRequest('/users/me', userResponseSchema.parse, {}, fetcher);
 }
 
+export function getPrivacySummary(fetcher?: Fetcher): Promise<PrivacySummary> {
+  return apiRequest(
+    '/privacy/summary',
+    privacySummarySchema.parse,
+    {},
+    fetcher,
+  );
+}
+
 export async function getMyProfile(
   fetcher: Fetcher = fetch,
 ): Promise<Profile | null> {
@@ -573,6 +584,16 @@ function queryString(
   return result ? `?${result}` : '';
 }
 
+function idempotencyKey(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+  return `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 18)}`;
+}
+
 async function csrfTokenFor(fetcher: Fetcher): Promise<string> {
   const cookieToken = csrfTokenFromDocument();
   if (cookieToken) {
@@ -682,7 +703,11 @@ export function createJob(
   return apiRequest(
     '/jobs',
     managedJobSchema.parse,
-    { body: JSON.stringify(input), method: 'POST' },
+    {
+      body: JSON.stringify(input),
+      headers: { 'Idempotency-Key': idempotencyKey() },
+      method: 'POST',
+    },
     fetcher,
   );
 }
@@ -763,7 +788,11 @@ export function submitApplication(
   return apiRequest(
     `/jobs/${encodeURIComponent(jobId)}/applications`,
     candidateApplicationSchema.parse,
-    { body: JSON.stringify({ coverMessage }), method: 'POST' },
+    {
+      body: JSON.stringify({ coverMessage }),
+      headers: { 'Idempotency-Key': idempotencyKey() },
+      method: 'POST',
+    },
     fetcher,
   );
 }

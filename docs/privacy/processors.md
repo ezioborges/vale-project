@@ -1,15 +1,10 @@
-# Registro de operadores e fornecedores
+# Registro de operadores e suboperadores
 
-Estado: `PENDENTE_APROVACAO` (D-01 e D-10). Preencher antes de tráfego de produção com dados
-reais.
+Status: `PENDENTE_APROVACAO` (D-01 e D-10). Não há contrato ou região inferidos neste repositório.
 
-| Categoria | Fornecedor/serviço | Dados | Finalidade | Região/transferência | Contrato e owner | Estado |
-| --- | --- | --- | --- | --- | --- | --- |
-| banco | a definir | dados do produto | persistência | a definir | operação + jurídico | pendente |
-| e-mail | a definir | destinatário e template transitório | notificações | a definir | operação + jurídico | pendente |
-| storage | a definir | uploads e exportações | objetos privados | a definir | segurança + jurídico | pendente |
-| logs/métricas | a definir | telemetria redigida | observabilidade | a definir | segurança + operação | pendente |
-| backup | a definir | cópia criptografada do banco/objetos | continuidade | a definir | operação + jurídico | pendente |
-
-Registrar suboperadores, DPA, acesso mínimo, criptografia, retenção, procedimento de incidente,
-data de revisão e evidência contratual em cada linha aprovada.
+| Categoria | Possível operador | Dados envolvidos | Região/transferência | Contrato, DPA e owner | Estado |
+| --- | --- | --- | --- | --- | --- |
+| hospedagem/banco | provedor a definir | dados do PostgreSQL e backups | `PENDENTE_APROVACAO` | Operações + Jurídico | bloqueia produção com dados reais |
+| e-mail transacional | gateway HTTP a definir | destinatário, nome e token transitório | `PENDENTE_APROVACAO` | Produto + Jurídico | endpoint HTTPS exigido tecnicamente |
+| storage privado | S3 compatível a definir | assets, currículo, exportações futuras | `PENDENTE_APROVACAO` | Operações + Segurança | bucket privado e criptografia exigidos |
+| observabilidade | provedor a definir | logs redigidos e métricas agregadas | `PENDENTE_APROVACAO` | Segurança + Operações | nenhum dado pessoal deve ser enviado |

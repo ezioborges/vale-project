@@ -1,16 +1,14 @@
-# Direitos do titular — operação proposta
+# Direitos do titular — política de produto pendente de aprovação
 
-O canal autenticado fica em `/app/conta/privacidade`; o canal assistido e seus contatos dependem de
-D-01 e D-04. O produto não promete execução imediata: registra protocolo, estado, prazo operacional
-aprovado e motivo controlado para bloqueio, retenção ou recusa.
+O Vale prevê confirmação, acesso, correção, exportação, revogação de consentimento opcional e
+exclusão/anonimização. A ativação para dados reais depende das decisões D-01 a D-12 e da revisão do
+controlador/encarregado. Até essa aprovação, nenhum endpoint de exclusão, exportação ou consentimento
+opcional é exposto como funcional.
 
-| Direito | Fluxo técnico | Estado de ativação |
-| --- | --- | --- |
-| confirmação/acesso simplificado | resumo autenticado | depende de conteúdo aprovado |
-| exportação completa | reautenticação, pedido, worker e download privado | desativado até D-02/D-06 |
-| correção | allowlist; e-mail em duas fases | implementação posterior à matriz de correção |
-| consentimento opcional | catálogo, versão, ledger e revogação | desativado até D-07 |
-| exclusão/anonimização | reautenticação, período de segurança, saga e ledger | desativado até D-03/D-05 |
+O canal autenticado deverá exigir sessão, CSRF/origem válida, reautenticação por senha para ações
+críticas e rate limit. O canal assistido deverá validar identidade e representação conforme a política
+aprovada (D-04), sem registrar conteúdo livre do atendimento na auditoria técnica.
 
-Pedidos de representante, perda de acesso e contestação devem receber validação humana segundo a
-política aprovada; nunca se deve usar um erro técnico genérico como resposta de mérito.
+Pedidos receberão protocolo, estado, prazo operacional, motivo controlado para eventual retenção ou
+recusa e trilha de eventos imutável. Confirmação/acesso simplificado deverá ser tratado de imediato e
+a declaração completa seguirá o prazo legal aplicável, confirmado na data de ativação.

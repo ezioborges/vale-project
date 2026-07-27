@@ -14,6 +14,8 @@ import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/17
 import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
 import { CreateReportsAndGovernance1710000005000 } from '../database/migrations/1710000005000-CreateReportsAndGovernance';
 import { HardenAbuseUploadsRetention1710000006000 } from '../database/migrations/1710000006000-HardenAbuseUploadsRetention';
+import { CreateOutbox1710000007000 } from '../database/migrations/1710000007000-CreateOutbox';
+import { CreateIdempotencyRecords1710000008000 } from '../database/migrations/1710000008000-CreateIdempotencyRecords';
 import { InitializeDatabase1710000000000 } from '../database/migrations/1710000000000-InitializeDatabase';
 import { EMAIL_SENDER, EmailMessage, EmailSender } from '../email/email-sender';
 import { Job } from '../jobs/job.entity';
@@ -444,11 +446,14 @@ async function resetTestDatabase(): Promise<void> {
       CreateJobsAndApplications1710000004000,
       CreateReportsAndGovernance1710000005000,
       HardenAbuseUploadsRetention1710000006000,
+      CreateOutbox1710000007000,
+      CreateIdempotencyRecords1710000008000,
     ],
   });
 
   await dataSource.initialize();
-  await dataSource.dropDatabase();
+  await dataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
+  await dataSource.query('CREATE SCHEMA public');
   await dataSource.runMigrations();
   await dataSource.undoLastMigration();
   await dataSource.runMigrations();

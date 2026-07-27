@@ -10,9 +10,9 @@ export class LogEmailSender implements EmailSender {
     this.logger.log(
       JSON.stringify({
         provider: 'log',
-        to: message.to,
-        subject: message.subject,
-        text: message.text,
+        event: 'email_dispatched',
+        subjectLength: message.subject.length,
+        bodyLength: message.text.length,
       }),
     );
   }

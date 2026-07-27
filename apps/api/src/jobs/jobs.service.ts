@@ -34,6 +34,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { Env } from '../common/config/env.validation';
+import { IdempotencyService } from '../common/idempotency/idempotency.service';
 import { RateLimitService } from '../common/rate-limit/rate-limit.service';
 import { CandidateProfile } from '../profiles/candidate-profile.entity';
 import { EmployerProfile } from '../profiles/employer-profile.entity';
@@ -86,6 +87,7 @@ export class JobsService {
     private readonly configService: ConfigService<Env, true>,
     @Inject(FILE_STORAGE) private readonly storage: FileStorage,
     private readonly rateLimitService: RateLimitService,
+    private readonly idempotencyService: IdempotencyService,
   ) {}
 
   async createJob(
@@ -93,8 +95,42 @@ export class JobsService {
     input: JobInputDto,
     context: JobRequestContext,
   ): Promise<ManagedJob> {
+    return (await this.createJobIdempotent(owner, input, context)).job;
+  }
+
+  async createJobIdempotent(
+    owner: AuthenticatedUser,
+    input: JobInputDto,
+    context: JobRequestContext,
+    idempotencyKey?: string,
+  ): Promise<{ job: ManagedJob; replayed: boolean }> {
     this.assertJobInput(input);
-    const saved = await this.dataSource.transaction(async (manager) => {
+    const execution = await this.idempotencyService.execute(
+      {
+        actorUserId: owner.id,
+        method: 'POST',
+        route: '/jobs',
+        key: idempotencyKey,
+        payload: input,
+        resourceType: 'job',
+        contractVersion: 'v1',
+      },
+      (manager) => this.createJobInTransaction(manager, owner, input, context),
+    );
+
+    return {
+      job: await this.getManagedJob(execution.resourceId, owner, false),
+      replayed: execution.replayed,
+    };
+  }
+
+  private async createJobInTransaction(
+    manager: EntityManager,
+    owner: AuthenticatedUser,
+    input: JobInputDto,
+    context: JobRequestContext,
+  ): Promise<string> {
+    const saved = await (async () => {
       const employer = await manager.getRepository(EmployerProfile).findOne({
         where: { userId: owner.id },
         lock: { mode: 'pessimistic_write' },
@@ -140,9 +176,8 @@ export class JobsService {
         context,
       );
       return result;
-    });
-
-    return this.getManagedJob(saved.id, owner, false);
+    })();
+    return saved.id;
   }
 
   async listMyJobs(
@@ -423,6 +458,23 @@ export class JobsService {
     coverMessage: string | null | undefined,
     context: JobRequestContext,
   ): Promise<CandidateApplication> {
+    return (
+      await this.submitApplicationIdempotent(
+        jobId,
+        candidate,
+        coverMessage,
+        context,
+      )
+    ).application;
+  }
+
+  async submitApplicationIdempotent(
+    jobId: string,
+    candidate: AuthenticatedUser,
+    coverMessage: string | null | undefined,
+    context: JobRequestContext,
+    idempotencyKey?: string,
+  ): Promise<{ application: CandidateApplication; replayed: boolean }> {
     const job = await this.jobRepository.findOne({
       where: { id: jobId, status: 'approved' },
       relations: { employerProfile: true },
@@ -462,77 +514,98 @@ export class JobsService {
       );
     }
 
-    const snapshotKey = `applications/${candidate.id}/${randomUUID()}.pdf`;
-    const resumeContent = await this.storage.get(resume.storageKey);
-    await this.storage.put(snapshotKey, resumeContent, resume.mimeType);
+    const execution = await this.idempotencyService.execute(
+      {
+        actorUserId: candidate.id,
+        method: 'POST',
+        route: '/applications',
+        key: idempotencyKey,
+        payload: { coverMessage: this.cleanNullable(coverMessage), jobId },
+        resourceType: 'application',
+        contractVersion: 'v1',
+      },
+      async (manager, idempotencyRecordId) => {
+        const applicationId = idempotencyRecordId ?? randomUUID();
+        const snapshotKey = `applications/${candidate.id}/${applicationId}.pdf`;
+        let snapshotUploaded = false;
+        try {
+          const lockedJob = await manager.getRepository(Job).findOne({
+            where: { id: jobId },
+            lock: { mode: 'pessimistic_read' },
+          });
+          if (lockedJob?.status !== 'approved') {
+            throw new ConflictException(
+              'Esta vaga deixou de receber candidaturas.',
+            );
+          }
 
-    let applicationId: string;
-    try {
-      applicationId = await this.dataSource.transaction(async (manager) => {
-        const lockedJob = await manager.getRepository(Job).findOne({
-          where: { id: jobId },
-          lock: { mode: 'pessimistic_read' },
-        });
-        if (lockedJob?.status !== 'approved') {
-          throw new ConflictException(
-            'Esta vaga deixou de receber candidaturas.',
+          const repository = manager.getRepository(Application);
+          const application = await repository.save(
+            repository.create({
+              id: applicationId,
+              jobId,
+              candidateProfileId: profile.id,
+              coverMessage: this.cleanNullable(coverMessage),
+              status: 'submitted',
+            }),
           );
+          const resumeContent = await this.storage.get(resume.storageKey);
+          await this.storage.put(snapshotKey, resumeContent, resume.mimeType);
+          snapshotUploaded = true;
+          await manager.getRepository(ApplicationResumeSnapshot).save({
+            applicationId: application.id,
+            originalName: resume.originalName,
+            mimeType: resume.mimeType,
+            sizeBytes: resume.sizeBytes,
+            storageKey: snapshotKey,
+            retentionUntil: new Date(
+              Date.now() +
+                this.configService.get('APPLICATION_RESUME_RETENTION_DAYS', {
+                  infer: true,
+                }) *
+                  24 *
+                  60 *
+                  60 *
+                  1000,
+            ),
+          });
+          await manager.getRepository(ApplicationStatusHistory).save({
+            applicationId: application.id,
+            actorUserId: candidate.id,
+            fromStatus: null,
+            toStatus: 'submitted',
+          });
+          await this.recordAudit(
+            manager,
+            candidate.id,
+            candidate.id,
+            'application.submitted',
+            { jobId, applicationId: application.id },
+            context,
+          );
+          return application.id;
+        } catch (error) {
+          if (snapshotUploaded) {
+            await this.storage.delete(snapshotKey).catch(() => undefined);
+          }
+          if (
+            error instanceof QueryFailedError &&
+            (error.driverError as { code?: string }).code === '23505'
+          ) {
+            throw new ConflictException('Você já se candidatou a esta vaga.');
+          }
+          throw error;
         }
+      },
+    );
 
-        const repository = manager.getRepository(Application);
-        const application = await repository.save(
-          repository.create({
-            jobId,
-            candidateProfileId: profile.id,
-            coverMessage: this.cleanNullable(coverMessage),
-            status: 'submitted',
-          }),
-        );
-        await manager.getRepository(ApplicationResumeSnapshot).save({
-          applicationId: application.id,
-          originalName: resume.originalName,
-          mimeType: resume.mimeType,
-          sizeBytes: resume.sizeBytes,
-          storageKey: snapshotKey,
-          retentionUntil: new Date(
-            Date.now() +
-              this.configService.get('APPLICATION_RESUME_RETENTION_DAYS', {
-                infer: true,
-              }) *
-                24 *
-                60 *
-                60 *
-                1000,
-          ),
-        });
-        await manager.getRepository(ApplicationStatusHistory).save({
-          applicationId: application.id,
-          actorUserId: candidate.id,
-          fromStatus: null,
-          toStatus: 'submitted',
-        });
-        await this.recordAudit(
-          manager,
-          candidate.id,
-          candidate.id,
-          'application.submitted',
-          { jobId, applicationId: application.id },
-          context,
-        );
-        return application.id;
-      });
-    } catch (error) {
-      await this.storage.delete(snapshotKey).catch(() => undefined);
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string }).code === '23505'
-      ) {
-        throw new ConflictException('Você já se candidatou a esta vaga.');
-      }
-      throw error;
-    }
-
-    return this.getCandidateApplication(applicationId, candidate.id);
+    return {
+      application: await this.getCandidateApplication(
+        execution.resourceId,
+        candidate.id,
+      ),
+      replayed: execution.replayed,
+    };
   }
 
   async listMyApplications(

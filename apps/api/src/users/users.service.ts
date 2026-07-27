@@ -12,7 +12,7 @@ import type {
   UserStatus,
 } from '@vale/shared';
 import * as argon2 from 'argon2';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 
 import { AuditService } from '../audit/audit.service';
 import { RefreshToken } from '../auth/refresh-token.entity';
@@ -26,6 +26,7 @@ export type CreatePublicUserInput = {
   email: string;
   password: string;
   role: Extract<UserRole, 'candidate' | 'employer'>;
+  passwordHash?: string;
 };
 
 export type AdministrativeChange = {
@@ -44,18 +45,24 @@ export class UsersService {
     private readonly auditService: AuditService,
   ) {}
 
-  async createPublicUser(input: CreatePublicUserInput): Promise<User> {
+  async createPublicUser(
+    input: CreatePublicUserInput,
+    manager?: EntityManager,
+  ): Promise<User> {
+    const repository = manager
+      ? manager.getRepository(User)
+      : this.userRepository;
     const email = input.email.trim().toLowerCase();
-    const existing = await this.userRepository.findOne({ where: { email } });
+    const existing = await repository.findOne({ where: { email } });
 
     if (existing) {
       throw new ConflictException('Email is already registered.');
     }
 
-    const user = this.userRepository.create({
+    const user = repository.create({
       displayName: input.displayName.trim().replace(/\s+/g, ' '),
       email,
-      passwordHash: await argon2.hash(input.password),
+      passwordHash: input.passwordHash ?? (await argon2.hash(input.password)),
       role: input.role,
       status: 'pending_email',
       emailVerifiedAt: null,
@@ -63,7 +70,7 @@ export class UsersService {
     });
 
     try {
-      return await this.userRepository.save(user);
+      return await repository.save(user);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         throw new ConflictException('Email is already registered.');

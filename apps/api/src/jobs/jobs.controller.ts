@@ -2,11 +2,13 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type {
@@ -17,7 +19,7 @@ import type {
   PublicJobPage,
   ReceivedApplicationPage,
 } from '@vale/shared';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 import { AuthenticatedUser } from '../common/auth/authenticated-user';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -45,12 +47,21 @@ export class JobsController {
   @Roles('employer')
   @RequireAcceptedTerms()
   @RequireEmailVerified()
-  create(
+  async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: JobInputDto,
     @Req() request: Request,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<ManagedJob> {
-    return this.jobsService.createJob(user, body, this.context(request));
+    const result = await this.jobsService.createJobIdempotent(
+      user,
+      body,
+      this.context(request),
+      idempotencyKey,
+    );
+    if (result.replayed) response.setHeader('Idempotency-Replayed', 'true');
+    return result.job;
   }
 
   @Get('mine')
@@ -161,18 +172,23 @@ export class JobsController {
   @Roles('candidate')
   @RequireAcceptedTerms()
   @RequireEmailVerified()
-  apply(
+  async apply(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() body: SubmitApplicationDto,
     @Req() request: Request,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<CandidateApplication> {
-    return this.jobsService.submitApplication(
+    const result = await this.jobsService.submitApplicationIdempotent(
       id,
       user,
       body.coverMessage,
       this.context(request),
+      idempotencyKey,
     );
+    if (result.replayed) response.setHeader('Idempotency-Replayed', 'true');
+    return result.application;
   }
 
   @Get()

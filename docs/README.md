@@ -34,8 +34,9 @@ A implementação e a sequência de adoção estão descritas no
 | 17 | [16-execucao-etapa-2.md](16-execucao-etapa-2.md) |
 | 18 | [17-execucao-etapa-3.md](17-execucao-etapa-3.md) |
 | 19 | [18-plano-execucao-etapa-4.md](18-plano-execucao-etapa-4.md) |
-| 20 | [requirements/README.md](requirements/README.md) |
-| 21 | [runbooks/README.md](runbooks/README.md) |
+| 20 | [19-execucao-etapa-4.md](19-execucao-etapa-4.md) |
+| 21 | [requirements/README.md](requirements/README.md) |
+| 22 | [runbooks/README.md](runbooks/README.md) |
 
 ## Registros operacionais
 

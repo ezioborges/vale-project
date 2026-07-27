@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { LegalDocumentType } from '@vale/shared';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { TermAcceptance } from './term-acceptance.entity';
 
@@ -20,8 +20,14 @@ export class TermsService {
     private readonly termAcceptanceRepository: Repository<TermAcceptance>,
   ) {}
 
-  async accept(input: AcceptTermsInput): Promise<TermAcceptance> {
-    const existing = await this.termAcceptanceRepository.findOneBy({
+  async accept(
+    input: AcceptTermsInput,
+    manager?: EntityManager,
+  ): Promise<TermAcceptance> {
+    const repository = manager
+      ? manager.getRepository(TermAcceptance)
+      : this.termAcceptanceRepository;
+    const existing = await repository.findOneBy({
       userId: input.userId,
       documentType: input.documentType,
       version: input.version,
@@ -31,7 +37,7 @@ export class TermsService {
       return existing;
     }
 
-    const acceptance = this.termAcceptanceRepository.create({
+    const acceptance = repository.create({
       userId: input.userId,
       documentType: input.documentType,
       version: input.version,
@@ -39,24 +45,26 @@ export class TermsService {
       userAgent: input.userAgent ?? null,
     });
 
-    return this.termAcceptanceRepository.save(acceptance);
+    return repository.save(acceptance);
   }
 
   async acceptAll(
     userId: string,
     versions: Record<LegalDocumentType, string>,
     metadata: Pick<AcceptTermsInput, 'ipAddress' | 'userAgent'>,
+    manager?: EntityManager,
   ): Promise<void> {
-    await Promise.all(
-      Object.entries(versions).map(([documentType, version]) =>
-        this.accept({
+    for (const [documentType, version] of Object.entries(versions)) {
+      await this.accept(
+        {
           userId,
           documentType: documentType as LegalDocumentType,
           version,
           ...metadata,
-        }),
-      ),
-    );
+        },
+        manager,
+      );
+    }
   }
 
   async hasAcceptedCurrentDocuments(

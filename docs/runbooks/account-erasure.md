@@ -1,15 +1,14 @@
-# Runbook — exclusão/anonimização de conta
+# Runbook — exclusão e anonimização de conta
 
-Pré-condições: D-02, D-03 e D-05 aprovadas; plano por domínio versionado; dry-run revisado;
-backup/restore e ledger testados.
+Status: somente desenho; executor bloqueado até D-03, D-05, D-06, D-08 e D-12.
 
-1. Validar identidade e reautenticação; criar protocolo idempotente e aplicar o estado aprovado.
-2. Revogar sessões e aguardar o período de segurança aprovado, permitindo cancelamento somente
-   antes do ponto irreversível.
-3. Fazer preflight de FKs, storage, pendências e exceções de retenção.
-4. Executar a saga por passos persistidos: storage, tabelas, ledger, notificação e conclusão.
-5. Tratar `NotFound` no storage como sucesso idempotente; falha deixa `failed_retryable`, nunca
-   conclusão falsa.
-6. Após restore, manter o ambiente isolado, reaplicar ledger/tombstones e validar antes de liberar.
+1. Confirmar protocolo, identidade, período de segurança e possibilidade de cancelamento aprovados.
+2. Executar dry-run e registrar cada dado como `delete`, `anonymize`, `retain`, `manual_review` ou
+   `not_found`, com regra versionada.
+3. Revogar sessões antes do passo irreversível e restringir a conta ao estado definido.
+4. Processar storage e banco como saga idempotente; `NotFound` no storage é sucesso idempotente.
+5. Só concluir após persistir ledger mínimo de eliminação e validar os passos obrigatórios.
+6. Em restore, manter o ambiente isolado, reaplicar ledger/revogações antes do tráfego e destruir o
+   ambiente de ensaio.
 
-É proibido restaurar backup para desfazer uma eliminação concluída.
+Uma retenção parcial exige motivo aprovado. Backup não é usado para desfazer exclusão concluída.

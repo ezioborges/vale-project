@@ -3,7 +3,7 @@
 - Plano de origem:
   [`13-plano-melhorias-seguranca-fluxo.md`](13-plano-melhorias-seguranca-fluxo.md)
 - Data-base da análise: 2026-07-26
-- Estado: planejada; implementação ainda não iniciada
+- Estado: implementação técnica inicial concluída; ativações dependentes de governança pendente
 - Pré-requisitos técnicos: etapas 0 a 3 concluídas e seus gates novamente verdes na revisão de
   início
 

@@ -13,6 +13,7 @@ export default function CandidateHome() {
           <Link href="/vagas">Buscar vagas</Link>
           <Link href="/app/candidato/candidaturas">Candidaturas</Link>
           <Link href="/app/candidato/denuncias">Denúncias</Link>
+          <Link href="/app/conta/privacidade">Privacidade</Link>
           <Link href="/app/candidato">Meu perfil</Link>
         </nav>
       </header>

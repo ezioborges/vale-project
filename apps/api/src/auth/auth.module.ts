@@ -7,6 +7,7 @@ import { AuditModule } from '../audit/audit.module';
 import { Env } from '../common/config/env.validation';
 import { CsrfService } from '../common/auth/csrf.service';
 import { EmailModule } from '../email/email.module';
+import { OutboxModule } from '../outbox/outbox.module';
 import { TermsModule } from '../terms/terms.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
@@ -22,6 +23,7 @@ import { RefreshToken } from './refresh-token.entity';
     UsersModule,
     TermsModule,
     EmailModule,
+    OutboxModule,
     TypeOrmModule.forFeature([
       RefreshToken,
       EmailVerificationToken,

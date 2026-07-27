@@ -18,6 +18,8 @@ import { CreateIdentityTables1710000001000 } from '../database/migrations/171000
 import { CompletePhaseOne1710000002000 } from '../database/migrations/1710000002000-CompletePhaseOne';
 import { CreateProfilesAndPrivacy1710000003000 } from '../database/migrations/1710000003000-CreateProfilesAndPrivacy';
 import { CreateJobsAndApplications1710000004000 } from '../database/migrations/1710000004000-CreateJobsAndApplications';
+import { CreateOutbox1710000007000 } from '../database/migrations/1710000007000-CreateOutbox';
+import { CreateIdempotencyRecords1710000008000 } from '../database/migrations/1710000008000-CreateIdempotencyRecords';
 import { enableCsrfForAgent, TEST_BROWSER_ORIGIN } from './csrf-test.helper';
 
 const integrationDescribe =
@@ -586,11 +588,14 @@ async function resetTestDatabase(): Promise<void> {
       CompletePhaseOne1710000002000,
       CreateProfilesAndPrivacy1710000003000,
       CreateJobsAndApplications1710000004000,
+      CreateOutbox1710000007000,
+      CreateIdempotencyRecords1710000008000,
     ],
   });
 
   await dataSource.initialize();
-  await dataSource.dropDatabase();
+  await dataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
+  await dataSource.query('CREATE SCHEMA public');
   await dataSource.runMigrations();
   await dataSource.destroy();
 }

@@ -1,27 +1,27 @@
-# Inventário de dados pessoais
+# Inventário de tratamento de dados
 
-Estado: **rascunho técnico, bloqueado para aprovação D-01/D-02/D-03/D-10**. O inventário cobre a
-base atual e deve ser reconciliado a cada migration, novo campo JSON, log, métrica, backup ou
-provedor. Campos de texto livre podem conter dados pessoais e, eventualmente, sensíveis.
+Status: rascunho técnico — decisões jurídicas, operacionais e de fornecedores pendentes de aprovação.
+Última revisão técnica: 2026-07-26. Próxima revisão: antes de qualquer ativação de exportação,
+consentimento opcional ou exclusão de dados reais.
 
-| Conjunto | Titular/origem | Finalidade a aprovar | Sistemas e visibilidade | Retenção/destino | Owner |
+Este inventário é uma linha de base verificável do schema, storage e configuração atuais. A base
+legal, o prazo legal e o destino definitivo não foram inferidos: onde ainda não há aprovação, o
+valor é `PENDENTE_APROVACAO` e bloqueia automações destrutivas.
+
+| Conjunto | Titular/origem | Finalidade técnica observada | Sistemas e visibilidade | Retenção/destino | Owner e evidência |
 | --- | --- | --- | --- | --- | --- |
-| `users` | conta; cadastro | identidade, acesso e segurança | PostgreSQL; próprio titular e equipe autorizada | `PENDENTE_APROVACAO`; tombstone após decisão | produto + jurídico |
-| tokens de sessão/verificação/reset | conta; sistema | autenticação e recuperação | PostgreSQL; nunca por API | expiração técnica existente; retenção pós-uso pendente | segurança |
-| `term_acceptances` | conta; manifestação | provar versão obrigatória | PostgreSQL; equipe autorizada | `PENDENTE_APROVACAO` para IP/user-agent e aceite | jurídico |
-| perfis candidato/contratante | titular; perfil | apresentação e matching | PostgreSQL; depende da visibilidade/autorização | `PENDENTE_APROVACAO` | produto |
-| `profile_assets` e objetos | titular; upload | avatar, logo e currículo | metadata no PostgreSQL; objeto privado no storage | política de currículo já técnica; prazo jurídico pendente | segurança + produto |
-| vagas e candidaturas | contratante/candidato; criação | intermediação e processo seletivo | PostgreSQL; partes autorizadas e equipe | `PENDENTE_APROVACAO`; terceiros devem ser redigidos | produto + jurídico |
-| snapshots de currículo | candidato; cópia interna | estabilidade da candidatura | PostgreSQL + storage privado | prazo técnico atual requer aprovação jurídica | produto |
-| denúncias e decisões | denunciante, alvo e equipe | segurança, moderação e defesa | PostgreSQL; equipe restrita | `PENDENTE_APROVACAO`; possível exceção de evidência | jurídico + segurança |
-| auditoria e rate limit | usuário/visitante; sistema | investigação, integridade e abuso | PostgreSQL; admin restrito | `PENDENTE_APROVACAO` | segurança |
-| outbox | conta; sistema | entrega de notificação | PostgreSQL cifrado; provedor de e-mail | payload transitório; janela pendente D-12 | operação |
-| idempotência | usuário; cliente | evitar duplicação de mutação | PostgreSQL; nunca exposta | TTL `PENDENTE_APROVACAO` | engenharia |
-| pedidos/exportações | titular; solicitação | exercício de direitos | PostgreSQL + storage privado | protocolo/artefato `PENDENTE_APROVACAO` | encarregado |
-| logs, métricas e backups | todos; sistemas | operação, segurança e continuidade | provedor ainda não aprovado | `PENDENTE_APROVACAO` | operação + segurança |
+| `users` (nome, e-mail, hash de senha, estado) | usuário; cadastro | autenticação e operação da conta | PostgreSQL; titular/equipe autorizada | `PENDENTE_APROVACAO`; não automatizar exclusão | Produto + Jurídico; entity `users` e migration de identidade |
+| tokens de sessão, reset e verificação | usuário; sistema | sessão, recuperação e verificação | PostgreSQL; nunca expostos após emissão | TTL técnico já configurado; limpeza pós-TTL `PENDENTE_APROVACAO` | Segurança; tabelas de tokens e configuração |
+| `term_acceptances` | usuário; cadastro | provar aceite de documentos obrigatórios | PostgreSQL; titular/equipe autorizada | `PENDENTE_APROVACAO`; não é consentimento opcional | Jurídico; `terms.service.ts` |
+| perfil de candidato | candidato; próprio titular | apresentação e candidatura | PostgreSQL e API conforme visibilidade | `PENDENTE_APROVACAO` | Produto; `candidate_profiles`, campos JSON/texto livre |
+| perfil de contratante | responsável/empresa; próprio titular | publicação e gestão de vagas | PostgreSQL e API autorizada | `PENDENTE_APROVACAO` | Produto + Jurídico; `employer_profiles` |
+| assets de perfil e currículo | usuário; upload | avatar/logo e currículo para fluxos autorizados | storage privado, metadados PostgreSQL | currículo de candidatura segue retenção técnica existente; política legal `PENDENTE_APROVACAO` | Segurança; `profile_assets`, snapshots e lifecycle |
+| vagas e candidaturas | contratante/candidato e possíveis terceiros | intermediação de oportunidades | PostgreSQL, storage de snapshot e destinatário autorizado | snapshots têm job técnico existente; destino definitivo `PENDENTE_APROVACAO` | Produto + Jurídico; entities/jobs |
+| denúncias e decisões | denunciante, alvo e equipe | moderação, segurança e evidência | PostgreSQL; equipe autorizada | `PENDENTE_APROVACAO`; possível exceção de defesa de direitos | Segurança + Jurídico; reports/moderation |
+| auditoria, rate limit e logs | usuário, visitante e sistema | segurança, investigação e operação | PostgreSQL, saída de logs e métricas | `PENDENTE_APROVACAO`; logs devem ser redigidos | Segurança; audit/rate-limit/observabilidade |
+| outbox e idempotência | usuário; sistema | entrega confiável e retry seguro | PostgreSQL; payload de outbox cifrado | janela operacional e TTL `PENDENTE_APROVACAO` | Engenharia + Segurança; migrations da etapa 4 |
+| backups e restaurações | todos os titulares contidos na cópia | continuidade e recuperação | provedor aprovado, acesso mínimo | RPO/RTO, região e expiração `PENDENTE_APROVACAO` | Operações; runbook de restore |
 
-## Compartilhamentos e regiões
-
-Os destinatários, suboperadores, regiões, DPA/contratos e controles ainda são
-`PENDENTE_APROVACAO` em [processors.md](processors.md). Nenhum conector remoto deve ser ativado
-para dados reais antes de D-10.
+Campos JSON, texto livre, nomes de arquivos e descrições são classificados como potencialmente
+pessoais ou sensíveis, independentemente do nome da coluna. Novos campos, provedores, logs ou
+artefatos de storage não podem entrar em produção sem acrescentar uma linha ou atualizar a existente.

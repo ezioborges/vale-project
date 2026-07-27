@@ -1,10 +1,13 @@
-# Runbook — pedido do titular
+# Runbook — pedido de titular
 
-1. Registrar protocolo, origem e horário sem copiar conteúdo sensível para logs técnicos.
-2. Validar identidade pelo fluxo aprovado (D-04); reautenticação é necessária para ações críticas.
-3. Classificar direito, dados atingidos, exceções e prazo conforme inventário/matriz aprovados.
-4. Executar somente contributors e regras versionados; revisar qualquer retenção ou recusa.
-5. Registrar evento imutável com ator/sistema, versão, motivo controlado e evidência.
-6. Entregar pelo canal autenticado seguro e fechar o pedido; não anexar exportação em e-mail.
+1. Registrar o protocolo, origem (autenticado/assistido), tipo e instante do pedido; não copiar a
+   conversa de atendimento para eventos técnicos.
+2. Validar identidade e representação conforme D-04; para ação crítica autenticada exigir a prova
+   recente aprovada.
+3. Classificar o pedido, calcular o prazo com política aprovada e atribuir owner.
+4. Executar apenas contratos de dados aprovados; revisar redaction de terceiros antes da entrega.
+5. Registrar transições, motivo controlado de retenção/recusa, evidências e comunicação segura.
+6. Escalar pedido próximo do prazo, falha recuperável ou contestação ao encarregado/canal aprovado.
 
-Não ativar o canal assistido nem prometer prazos antes da conclusão dos gates aplicáveis.
+Não habilitar exportação ou exclusão de dados reais enquanto D-01 a D-12 não estiverem preenchidos e
+aprovados.
