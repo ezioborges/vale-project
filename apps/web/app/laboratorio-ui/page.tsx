@@ -34,6 +34,7 @@ import {
   ApplicationStatusBadge,
   JobStatusBadge,
 } from '@/components/market-status';
+import { ReportStatusBadge } from '@/components/governance-status';
 import { Badge } from '@/components/ui/badge';
 import { ActionLink, Button, IconButton } from '@/components/ui/button';
 import { Brand } from '@/components/ui/brand';
@@ -54,13 +55,14 @@ import {
 } from '@/components/ui/feedback';
 import { Icon } from '@/components/ui/icon';
 import { Container, PageLayout } from '@/components/ui/layout';
+import { Pagination } from '@/components/ui/pagination';
 import { PageHeading } from '@/components/ui/page-heading';
 import { DialogExample } from '@/components/ui/dialog-example';
 
 export const metadata: Metadata = {
-  title: 'Laboratório UI | Vale',
+  title: 'Laboratório UI | Primícias',
   description:
-    'Referência visual e de experiência para as interfaces da plataforma Vale.',
+    'Referência visual e de experiência para as interfaces da plataforma Primícias.',
 };
 
 const navigation = [
@@ -139,7 +141,7 @@ export default function UiLaboratoryPage() {
           size="wide"
         >
           <Link
-            aria-label="Voltar para a página inicial do Vale"
+            aria-label="Voltar para a página inicial de Primícias"
             className="rounded-2xl focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-vale-blue"
             href="/"
           >
@@ -203,7 +205,7 @@ export default function UiLaboratoryPage() {
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-vale-muted">
               Este laboratório orienta as experiências de cadastro, contratação
-              e prestação de serviços do Vale com uma linguagem moderna,
+              e prestação de serviços de Primícias com uma linguagem moderna,
               acolhedora, clara e acessível.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
@@ -421,7 +423,24 @@ export default function UiLaboratoryPage() {
                   <Badge tone="accent">Nova oportunidade</Badge>
                   <Badge tone="warning">Revisão pendente</Badge>
                   <Badge tone="neutral">Rascunho</Badge>
+                  <ReportStatusBadge status="in_review" />
                 </div>
+              </article>
+
+              <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
+                <SpecimenLabel
+                  detail="pagination/operational"
+                  title="Paginação operacional"
+                />
+                <p className="max-w-lg text-sm leading-6 text-vale-muted">
+                  Filas e consultas mantêm o recorte ao avançar ou voltar de
+                  página, com nome acessível e retorno de posição.
+                </p>
+                <Pagination
+                  label="Exemplo de paginação operacional"
+                  page={2}
+                  totalPages={4}
+                />
               </article>
 
               <article className="rounded-3xl border border-vale-line bg-white p-6 sm:p-8">
@@ -589,7 +608,7 @@ export default function UiLaboratoryPage() {
                   >
                     <fieldset>
                       <legend className="mb-3 text-sm font-extrabold">
-                        Quero usar o Vale como:
+                        Quero usar Primícias como:
                       </legend>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <RadioCard

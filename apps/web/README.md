@@ -1,6 +1,6 @@
 # Web
 
-Aplicacao frontend Next.js do Vale Project.
+Aplicacao frontend Next.js de Primícias.
 
 ## Stack planejada
 

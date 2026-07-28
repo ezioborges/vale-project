@@ -893,11 +893,14 @@ export function createReport(
 }
 
 export function listMyReports(
-  status?: ReportStatus,
+  filters: {
+    page?: number;
+    status?: ReportStatus;
+  } = {},
   fetcher?: Fetcher,
 ): Promise<MyReportPage> {
   return apiRequest(
-    `/reports/mine${queryString({ status, page: 1, limit: 30 })}`,
+    `/reports/mine${queryString({ ...filters, page: filters.page ?? 1, limit: 30 })}`,
     myReportPageSchema.parse,
     {},
     fetcher,
@@ -906,6 +909,7 @@ export function listMyReports(
 
 export function listModerationReports(
   filters: {
+    page?: number;
     status?: ReportStatus;
     priority?: ReportPriority;
     targetType?: ReportTargetType;
@@ -915,7 +919,7 @@ export function listModerationReports(
   return apiRequest(
     `/moderation/reports${queryString({
       ...filters,
-      page: 1,
+      page: filters.page ?? 1,
       limit: 30,
     })}`,
     moderationReportPageSchema.parse,
@@ -953,6 +957,7 @@ export function decideReport(
 
 export function listAdminUsers(
   filters: {
+    page?: number;
     q?: string;
     role?: UserRole;
     status?: UserStatus;
@@ -960,7 +965,7 @@ export function listAdminUsers(
   fetcher?: Fetcher,
 ): Promise<AdminUserPage> {
   return apiRequest(
-    `/users${queryString({ ...filters, page: 1, limit: 30 })}`,
+    `/users${queryString({ ...filters, page: filters.page ?? 1, limit: 30 })}`,
     adminUserPageSchema.parse,
     {},
     fetcher,
@@ -999,6 +1004,7 @@ export function listAuditEvents(
   filters: {
     action?: string;
     actorUserId?: string;
+    page?: number;
     targetUserId?: string;
     from?: string;
     to?: string;
@@ -1006,7 +1012,7 @@ export function listAuditEvents(
   fetcher?: Fetcher,
 ): Promise<AuditEventPage> {
   return apiRequest(
-    `/audit-events${queryString({ ...filters, page: 1, limit: 40 })}`,
+    `/audit-events${queryString({ ...filters, page: filters.page ?? 1, limit: 40 })}`,
     auditEventPageSchema.parse,
     {},
     fetcher,

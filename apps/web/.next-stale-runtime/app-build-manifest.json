@@ -1,0 +1,265 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/app/_not-found/page-f3e650cf1535cba3.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/css/ab625fd956e417e9.css",
+      "static/css/2d6832ee8b810307.css",
+      "static/chunks/app/layout-0752c7db5ecbcce5.js"
+    ],
+    "/conta-indisponivel/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/app/conta-indisponivel/page-513f1c8e6a18af28.js"
+    ],
+    "/onboarding/candidato/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/onboarding/candidato/page-7259acad27f5d5e0.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/page-74d3152e6c629000.js"
+    ],
+    "/recuperar-senha/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/recuperar-senha/page-e3a7dbdd10d20e11.js"
+    ],
+    "/vagas/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/vagas/page-08c9d5cf07cc6ec1.js"
+    ],
+    "/vagas/[id]/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/763-e9b416416a4f40e4.js",
+      "static/chunks/app/vagas/[id]/page-b7436887cd8cfb52.js"
+    ],
+    "/onboarding/contratante/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/onboarding/contratante/page-7259acad27f5d5e0.js"
+    ],
+    "/laboratorio-ui/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/app/laboratorio-ui/page-3c472f0efc983a3b.js"
+    ],
+    "/admin/layout": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/admin/layout-792f6a465d878ad0.js"
+    ],
+    "/admin/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/app/admin/page-76256287b3713d03.js"
+    ],
+    "/app/layout": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/layout-792f6a465d878ad0.js"
+    ],
+    "/app/candidato/denuncias/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/431-03865eda83c53637.js",
+      "static/chunks/app/app/candidato/denuncias/page-681de6ab382a5d02.js"
+    ],
+    "/admin/usuarios/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/admin/usuarios/page-e6e94ace6e9faef4.js"
+    ],
+    "/app/candidato/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/candidato/page-49ec913be60c8c18.js"
+    ],
+    "/app/contratante/denuncias/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/431-03865eda83c53637.js",
+      "static/chunks/app/app/contratante/denuncias/page-78a8fdb3be7207b5.js"
+    ],
+    "/app/conta/privacidade/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/conta/privacidade/page-3b9c6af98276cb57.js"
+    ],
+    "/app/contratante/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/contratante/page-7519504ec9d9623a.js"
+    ],
+    "/app/contratante/vagas/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/contratante/vagas/page-6b397a7527b8a64b.js"
+    ],
+    "/app/equipe/denuncias/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/equipe/denuncias/page-bb146fed91746baf.js"
+    ],
+    "/app/equipe/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/app/app/equipe/page-76256287b3713d03.js"
+    ],
+    "/app/candidato/candidaturas/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/12eccb15-d5f6f2f4bc717d03.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/4-60e48fe1e1d808ae.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/763-e9b416416a4f40e4.js",
+      "static/chunks/app/app/candidato/candidaturas/page-230552a624cb07fb.js"
+    ],
+    "/app/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/app/app/page-7d3e676274363c1a.js"
+    ],
+    "/admin/auditoria/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/admin/auditoria/page-cd363fcffe19a680.js"
+    ],
+    "/app/equipe/moderacao/page": [
+      "static/chunks/webpack-a1e373f02ea7bfba.js",
+      "static/chunks/1cbf490c-cf0d049a2a0e3f7c.js",
+      "static/chunks/512-b22a5e18a998b8eb.js",
+      "static/chunks/main-app-91f6e46c76cba01b.js",
+      "static/chunks/918-6c84d91e5ef9d273.js",
+      "static/chunks/311-6eb3be755164f9cc.js",
+      "static/chunks/880-194b7273625096a6.js",
+      "static/chunks/app/app/equipe/moderacao/page-287464e9832b8f81.js"
+    ]
+  }
+}

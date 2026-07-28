@@ -51,7 +51,7 @@ function authErrorFeedback(error: unknown, action: Mode): Feedback {
     if (error.code === 'NETWORK_ERROR') {
       return {
         detail: 'Verifique sua conexão e tente novamente.',
-        title: 'Não foi possível alcançar o Vale',
+        title: 'Não foi possível alcançar Primícias',
         tone: 'danger',
       };
     }
@@ -294,7 +294,7 @@ export function AuthPanel({
         {isRegistering ? (
           <fieldset className="grid gap-3">
             <legend className="text-sm font-extrabold text-vale-ink">
-              Como você quer usar o Vale?
+              Como você quer usar Primícias?
             </legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <RadioCard

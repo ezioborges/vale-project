@@ -8,8 +8,9 @@ import { Container, PageLayout } from '@/components/ui/layout';
 export function PublicHeader() {
   return (
     <header className="border-b border-vale-border bg-vale-surface">
+      <span aria-hidden="true" className="primicias-pride-bar block h-1" />
       <Container className="flex min-h-18 flex-wrap items-center justify-between gap-4 py-3">
-        <Link aria-label="Vale — página inicial" href="/">
+        <Link aria-label="Primícias — página inicial" href="/">
           <Brand />
         </Link>
         <nav

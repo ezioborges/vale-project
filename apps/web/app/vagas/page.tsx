@@ -14,7 +14,7 @@ export default function JobsPage() {
           size="wide"
         >
           <Link
-            aria-label="Vale — página inicial"
+            aria-label="Primícias — página inicial"
             className="rounded-vale-sm focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-focus"
             href="/"
           >

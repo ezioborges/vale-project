@@ -192,19 +192,19 @@ describe('getApiHealth', () => {
             createdAt: now,
           },
         ],
-        page: 1,
+        page: 2,
         limit: 40,
         total: 1,
         totalPages: 1,
       }),
     });
 
-    const result = await listAuditEvents({}, fetcher);
+    const result = await listAuditEvents({ page: 2 }, fetcher);
 
     expect(result.items[0]).not.toHaveProperty('ipAddress');
     expect(result.items[0]).not.toHaveProperty('userAgent');
     expect(fetcher).toHaveBeenCalledWith(
-      expect.stringContaining('/audit-events?page=1&limit=40'),
+      expect.stringContaining('/audit-events?page=2&limit=40'),
       expect.objectContaining({ credentials: 'include' }),
     );
   });

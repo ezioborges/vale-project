@@ -1,0 +1,44 @@
+{
+  "version": 3,
+  "middleware": {
+    "/": {
+      "files": [
+        "server/edge-runtime-webpack.js",
+        "server/middleware.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/app(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json|\\.rsc|\\.segments\\/.+\\.segment\\.rsc)?[\\/#\\?]?$",
+          "originalSource": "/app/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/admin(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json|\\.rsc|\\.segments\\/.+\\.segment\\.rsc)?[\\/#\\?]?$",
+          "originalSource": "/admin/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/onboarding\\/candidato(\\.json|\\.rsc|\\.segments\\/.+\\.segment\\.rsc)?[\\/#\\?]?$",
+          "originalSource": "/onboarding/candidato"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/onboarding\\/contratante(\\.json|\\.rsc|\\.segments\\/.+\\.segment\\.rsc)?[\\/#\\?]?$",
+          "originalSource": "/onboarding/contratante"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "Vh6TNZ2X-rCIn4JTv79Yn",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "X7fK9qs5xVIR7S9LAJKRvjzjM+WtW4tGtpBwBpPTCOM=",
+        "__NEXT_PREVIEW_MODE_ID": "03cdcf5411af6c8232ac8edc6dab204a",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "47fd5cbae4a5d373a6747aa22cc220f7f1960d1acdc6a26ceeecbe3a151d896e",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "242cb064632026eaaee9e5ff78b503636ccd834086e0d0c3030d70532c820208"
+      }
+    }
+  },
+  "functions": {},
+  "sortedMiddleware": [
+    "/"
+  ]
+}

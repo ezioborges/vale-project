@@ -7,8 +7,8 @@ import './globals.css';
 config.autoAddCss = false;
 
 export const metadata: Metadata = {
-  title: 'Vale Project',
-  description: 'Plataforma de empregabilidade segura e inclusiva.',
+  title: 'Primícias',
+  description: 'Talento que floresce: uma plataforma de empregabilidade segura e inclusiva.',
 };
 
 export default function RootLayout({

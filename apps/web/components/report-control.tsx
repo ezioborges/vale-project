@@ -5,20 +5,11 @@ import { FormEvent, useState } from 'react';
 
 import { ApiRequestError, createReport } from '@/lib/api';
 
+import { reportReasonLabels } from './governance-status';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Alert } from './ui/feedback';
 import { FormField, Select, TextArea } from './ui/form-field';
-
-const reasonLabels: Record<ReportReason, string> = {
-  discrimination: 'Discriminação',
-  harassment: 'Assédio ou intimidação',
-  fraud: 'Fraude ou informação enganosa',
-  inappropriate_content: 'Conteúdo inadequado',
-  privacy: 'Privacidade ou exposição de dados',
-  spam: 'Spam',
-  other: 'Outro motivo',
-};
 
 export function ReportControl({
   targetType,
@@ -98,7 +89,7 @@ export function ReportControl({
               }
               value={reason}
             >
-              {Object.entries(reasonLabels).map(([value, text]) => (
+              {Object.entries(reportReasonLabels).map(([value, text]) => (
                 <option key={value} value={value}>
                   {text}
                 </option>

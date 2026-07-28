@@ -15,7 +15,11 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,yml,yaml,md}\"",
     "db:up": "docker compose up -d postgres",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "db:reset:dev": "docker compose --profile maintenance run --rm db-reset",
+    "db:reseed:dev": "docker compose --profile maintenance run --rm db-reseed"
   },
   "pnpm": {
     "overrides": {

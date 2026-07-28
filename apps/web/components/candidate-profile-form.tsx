@@ -62,7 +62,7 @@ const visibilityCopy: Record<
     label: 'Privado',
     description: 'Seu perfil não fica disponível para contratantes.',
     preview:
-      'Somente você e a equipe autorizada do Vale podem acessar seus dados profissionais.',
+      'Somente você e a equipe autorizada da plataforma Primícias podem acessar seus dados profissionais.',
   },
   applications_only: {
     label: 'Apenas candidaturas',
@@ -234,7 +234,7 @@ export function CandidateProfileForm() {
       aside={
         <ProfileIntro
           completion={profile?.completionPercentage ?? 0}
-          description="Pronomes são opcionais. O Vale não pede orientação sexual nem identidade de gênero para liberar oportunidades."
+          description="Pronomes são opcionais. Primícias não pede orientação sexual nem identidade de gênero para liberar oportunidades."
           eyebrow="Perfil profissional"
           title="Apresente sua trajetória do seu jeito"
         >

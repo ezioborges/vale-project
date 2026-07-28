@@ -53,6 +53,7 @@ const navigationByRole: Record<
     { href: '/admin/usuarios', label: 'Usuários' },
     { href: '/admin/auditoria', label: 'Auditoria' },
     { href: '/app/equipe/denuncias', label: 'Denúncias' },
+    { href: '/app/equipe/moderacao', label: 'Moderação de vagas' },
   ],
 };
 
@@ -88,13 +89,15 @@ export function AuthenticatedAppFrame({ children }: { children: ReactNode }) {
   }
 
   return (
-    <PageLayout kind="authenticated">
+    <PageLayout
+      kind={user.role === 'admin' ? 'administrative' : 'authenticated'}
+    >
       <header className="border-b border-vale-border bg-vale-surface">
         <Container
           className="flex min-h-18 flex-wrap items-center gap-x-6 gap-y-3 py-3"
           size="wide"
         >
-          <Link aria-label="Vale — área autenticada" href={user.initialPath}>
+          <Link aria-label="Primícias — área autenticada" href={user.initialPath}>
             <Brand />
           </Link>
           <nav

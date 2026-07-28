@@ -11,7 +11,8 @@
     "test:integration": "docker compose -f ../../docker-compose.yml up -d --wait postgres-test && NODE_ENV=test DATABASE_HOST=localhost DATABASE_PORT=5433 DATABASE_USER=vale_test DATABASE_PASSWORD=vale_test DATABASE_NAME=vale_project_test JWT_ACCESS_SECRET=integration-access-secret-with-32-characters PROFILE_STORAGE_ROOT=.data/test-profile-uploads OUTBOX_DISPATCH_ENABLED=true RUN_INTEGRATION_TESTS=true jest --runInBand src/integration/phase-one.integration.spec.ts src/integration/phase-two.integration.spec.ts src/integration/phase-three.integration.spec.ts src/integration/phase-four.integration.spec.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "migration:run": "node -r ts-node/register -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:run",
-    "migration:revert": "node -r ts-node/register -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:revert"
+    "migration:revert": "node -r ts-node/register -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/data-source.ts migration:revert",
+    "db:reset:dev": "DEV_DB_RESET_CONFIRM=true node -r ts-node/register -r tsconfig-paths/register ./src/database/reset-dev.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",

@@ -40,7 +40,7 @@ function verificationError(
   if (error instanceof ApiRequestError && error.code === 'NETWORK_ERROR') {
     return {
       detail: 'Verifique sua conexão e tente novamente.',
-      title: 'Não foi possível alcançar o Vale',
+      title: 'Não foi possível alcançar Primícias',
       tone: 'danger',
     };
   }

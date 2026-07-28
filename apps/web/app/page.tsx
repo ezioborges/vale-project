@@ -65,13 +65,13 @@ export default async function Home({
         <Container size="wide">
           <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.8fr)] lg:gap-16">
             <div className="max-w-2xl">
-              <Badge tone="accent">Talentos &amp; serviços com respeito</Badge>
+              <Badge tone="accent">O melhor de cada trajetória</Badge>
               <h1 className="mt-5 text-4xl font-black tracking-[-0.055em] text-vale-ink sm:text-5xl lg:text-6xl">
-                Trabalho que reconhece cada trajetória.
+                Faça florescer o seu próximo passo.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-vale-muted">
-                Encontre oportunidades, publique vagas e acompanhe cada passo em
-                uma plataforma construída com privacidade e inclusão.
+                Primícias conecta talentos e oportunidades para que cada pessoa
+                possa cultivar seu caminho e compartilhar o que tem de melhor.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <ActionLink href="#acesso" size="lg">
@@ -107,13 +107,13 @@ export default async function Home({
         <Container size="wide">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-vale-action">
-              Uma entrada bem acompanhada
+              Plantamos confiança desde o começo
             </p>
             <h2
               className="mt-3 text-3xl font-black tracking-[-0.045em] text-vale-ink sm:text-4xl"
               id="commitments-title"
             >
-              Você sabe o que acontece em cada próximo passo.
+              Toda trajetória merece cuidado para florescer.
             </h2>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-3">

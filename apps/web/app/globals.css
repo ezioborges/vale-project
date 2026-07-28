@@ -12,44 +12,47 @@
     BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Fundação semântica: componentes escolhem a função, não o valor visual. */
-  --color-vale-canvas: #f8f7fc;
+  /* Primícias: terra fértil, folhas e o dourado da primeira colheita. */
+  --color-vale-canvas: #faf7f0;
   --color-vale-surface: #ffffff;
   --color-vale-admin-canvas: #f6f7f4;
-  --color-vale-ink: #211a35;
-  --color-vale-muted: #6f6a7d;
-  --color-vale-border: #e7e3ef;
-  --color-vale-border-strong: #bdb5ca;
-  --color-vale-disabled: #f2f0f5;
-  --color-vale-neutral-subtle: #f3f1f6;
-  --color-vale-action: #5b3df5;
-  --color-vale-action-hover: #4026c8;
-  --color-vale-action-subtle: #f1efff;
-  --color-vale-focus: #2368e8;
-  --color-vale-success: #12815e;
-  --color-vale-success-strong: #0b5c43;
-  --color-vale-success-subtle: #e7f7f0;
-  --color-vale-info: #2368e8;
-  --color-vale-info-strong: #194fae;
-  --color-vale-info-subtle: #edf4ff;
-  --color-vale-warning: #9a3d0c;
-  --color-vale-warning-strong: #6b2907;
-  --color-vale-warning-subtle: #fff1e7;
-  --color-vale-danger: #a92350;
-  --color-vale-danger-strong: #771436;
-  --color-vale-danger-subtle: #fff0f4;
+  --color-vale-ink: #19322a;
+  --color-vale-muted: #60706a;
+  --color-vale-border: #e2e6df;
+  --color-vale-border-strong: #b7c5ba;
+  --color-vale-disabled: #f0f1eb;
+  --color-vale-neutral-subtle: #f2f4ee;
+  --color-vale-action: #2f6b4f;
+  --color-vale-action-hover: #24523d;
+  --color-vale-action-subtle: #eaf3ec;
+  --color-vale-focus: #2876a8;
+  --color-vale-success: #2f6b4f;
+  --color-vale-success-strong: #24523d;
+  --color-vale-success-subtle: #e8f3ea;
+  --color-vale-info: #2876a8;
+  --color-vale-info-strong: #1e5a82;
+  --color-vale-info-subtle: #eaf3f8;
+  --color-vale-warning: #a15c18;
+  --color-vale-warning-strong: #70400f;
+  --color-vale-warning-subtle: #fff3df;
+  --color-vale-danger: #a44652;
+  --color-vale-danger-strong: #78303a;
+  --color-vale-danger-subtle: #fff0ef;
 
   /* Acentos de marca; nunca são a única forma de comunicar um estado. */
+  /* Cores da comunidade LGBTQIAPN+: a diversidade sustenta o crescimento. */
   --color-vale-brand-pink: #d6249f;
   --color-vale-brand-blue: #2368e8;
   --color-vale-brand-green: #12815e;
   --color-vale-brand-orange: #e95f16;
   --color-vale-brand-yellow: #f7c948;
+  --color-vale-brand-violet: #5b3df5;
 
   /* Aliases temporários do laboratório até que todos os consumidores migrem. */
-  --color-vale-line: #e7e3ef;
-  --color-vale-soft: #f1efff;
-  --color-vale-violet: #5b3df5;
-  --color-vale-violet-deep: #4026c8;
+  --color-vale-line: #e2e6df;
+  --color-vale-soft: #eaf3ec;
+  --color-vale-violet: #2f6b4f;
+  --color-vale-violet-deep: #24523d;
   --color-vale-pink: #d6249f;
   --color-vale-blue: #2368e8;
   --color-vale-green: #12815e;
@@ -84,17 +87,17 @@
   --vale-motion-standard: 240ms;
   --vale-motion-slow: 400ms;
   --vale-motion-easing: cubic-bezier(0.2, 0, 0, 1);
-  --background: #f7f8f5;
-  --foreground: #17211f;
-  --muted: #596965;
-  --line: #d7ddd6;
+  --background: #faf7f0;
+  --foreground: #19322a;
+  --muted: #60706a;
+  --line: #e2e6df;
   --surface: #ffffff;
-  --surface-strong: #10231f;
-  --accent: #0b7a75;
-  --accent-strong: #075955;
-  --rose: #b7446c;
-  --gold: #a36a00;
-  --focus: #1c67d2;
+  --surface-strong: #19322a;
+  --accent: #2f6b4f;
+  --accent-strong: #24523d;
+  --rose: #c66b5b;
+  --gold: #a15c18;
+  --focus: #2876a8;
 }
 
 * {
@@ -159,6 +162,18 @@ button {
 
 .app-shell {
   min-height: 100vh;
+}
+
+.primicias-pride-bar {
+  background: linear-gradient(
+    90deg,
+    #e40303 0%,
+    #ff8c00 20%,
+    #ffed00 40%,
+    #008026 60%,
+    #24408e 80%,
+    #732982 100%
+  );
 }
 
 .topbar {

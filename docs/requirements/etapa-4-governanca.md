@@ -51,6 +51,22 @@ restrita de auditoria.
 - navegador de auditoria e visão geral administrativa;
 - navegação por papel e estados de carregamento, vazio, erro e sucesso.
 
+### Aplicação visual da etapa 5 — governança
+
+- painel da equipe com entrada curta para as filas de trabalho, sem inventar atribuições ou contagens
+  que a API não disponibiliza;
+- acompanhamento de denúncias com filtro por estado, paginação e status textual, sem reexibir a
+  descrição ou as notas internas para quem denunciou;
+- fila de moderação com filtros, paginação, prioridade, contexto autorizado e histórico que mostra
+  ação, responsável, data e motivo;
+- confirmação contextual antes de encerrar uma denúncia, retirar/restaurar vaga na busca, mudar papel
+  ou alterar estado de uma conta;
+- listagem administrativa com tabela nomeada e cabeçalhos no desktop, além de cartões equivalentes
+  em tela pequena;
+- consulta de auditoria com filtros explícitos, resultado paginado e detalhe limitado aos metadados
+  permitidos pelo contrato;
+- `ReportStatusBadge` e `Pagination` compartilhados entre as telas reais e o laboratório de interface.
+
 ## Rastreabilidade
 
 | Entrega | Evidência principal |
@@ -116,6 +132,18 @@ Resultados: 36 testes unitários da API, 14 testes da web, 6 testes dos contrato
 21 testes de integração em PostgreSQL passaram. API, web e pacote compartilhado também geraram
 builds de produção.
 
+### Aplicação visual verificada em 2026-07-27
+
+```bash
+pnpm --filter @vale/web typecheck
+pnpm --filter @vale/web lint
+pnpm --filter @vale/web test
+pnpm --filter @vale/web build
+```
+
+Resultados: typecheck, lint e build do frontend passaram. Os 27 testes da web passaram, incluindo
+três testes da jornada de governança e a verificação de paginação da consulta de auditoria.
+
 ## Limitações conhecidas
 
 - o MVP não oferece anexos, canal de retorno, apelação ou notificações externas;
@@ -125,3 +153,5 @@ builds de produção.
   moderação de conteúdo;
 - ainda são recomendados E2E de navegador, auditoria de acessibilidade e definição formal de
   retenção para denúncias, decisões e eventos antes do piloto público.
+- a API atual não expõe responsáveis atribuídos nem contagens agregadas de filas; a interface não
+  simula esses dados e mostra a autoria disponível no histórico de decisão.

@@ -1,120 +1,175 @@
 'use client';
 
-import type {
-  MyReport,
-  ReportReason,
-  ReportStatus,
-  ReportTargetType,
-} from '@vale/shared';
+import type { MyReportPage, ReportStatus } from '@vale/shared';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiRequestError, listMyReports } from '@/lib/api';
 
-const statusLabels: Record<ReportStatus, string> = {
-  open: 'Recebida',
-  in_review: 'Em análise',
-  resolved: 'Resolvida',
-  dismissed: 'Encerrada sem ação',
-};
+import {
+  reportReasonLabels,
+  reportStatusLabels,
+  reportTargetLabels,
+  ReportStatusBadge,
+} from './governance-status';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Alert, EmptyState, LoadingState } from './ui/feedback';
+import { FormField, Select } from './ui/form-field';
+import { Pagination } from './ui/pagination';
+import { PageHeading } from './ui/page-heading';
 
-const reasonLabels: Record<ReportReason, string> = {
-  discrimination: 'Discriminação',
-  harassment: 'Assédio',
-  fraud: 'Fraude',
-  inappropriate_content: 'Conteúdo inadequado',
-  privacy: 'Privacidade',
-  spam: 'Spam',
-  other: 'Outro',
-};
+function failureMessage(error: unknown) {
+  if (error instanceof ApiRequestError && error.status === 403) {
+    return 'Esta sessão não pode acessar o acompanhamento de denúncias.';
+  }
 
-const targetLabels: Record<ReportTargetType, string> = {
-  job: 'Vaga',
-  profile: 'Perfil',
-  user: 'Usuário',
-  application: 'Candidatura',
-};
+  return error instanceof Error
+    ? error.message
+    : 'Não foi possível carregar suas denúncias.';
+}
 
 export function MyReports() {
-  const [items, setItems] = useState<MyReport[]>([]);
+  const [result, setResult] = useState<MyReportPage | null>(null);
   const [status, setStatus] = useState<ReportStatus | ''>('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setMessage('');
-    try {
-      setItems((await listMyReports(status || undefined)).items);
-    } catch (error) {
-      setMessage(
-        error instanceof ApiRequestError
-          ? error.message
-          : 'Não foi possível carregar suas denúncias.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [status]);
+  const load = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      setMessage('');
+      try {
+        setResult(
+          await listMyReports({
+            page,
+            status: status || undefined,
+          }),
+        );
+      } catch (error) {
+        setMessage(failureMessage(error));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [status],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const reports = result?.items ?? [];
+
   return (
-    <section className="management-page">
-      <div className="management-hero">
-        <span className="eyebrow">Canal de segurança</span>
-        <h1>Minhas denúncias</h1>
-        <p>
-          Acompanhe somente o andamento. O relato completo, a prioridade e as
-          notas internas ficam restritos à equipe de moderação.
-        </p>
-      </div>
-      <div className="management-toolbar">
-        <label>
-          Filtrar por status
-          <select
-            value={status}
+    <section className="mx-auto max-w-vale-content">
+      <PageHeading
+        as="h1"
+        description="Acompanhe o andamento sem reexpor o relato. A descrição, a prioridade e as notas internas ficam restritas à equipe de moderação."
+        eyebrow="Canal de segurança"
+        title="Minhas denúncias"
+      />
+
+      <Card className="mt-8 flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-6">
+        <FormField
+          className="w-full sm:max-w-72"
+          id="my-reports-status"
+          label="Filtrar por status"
+        >
+          <Select
             onChange={(event) =>
               setStatus(event.target.value as ReportStatus | '')
             }
+            value={status}
           >
-            <option value="">Todos</option>
-            {Object.entries(statusLabels).map(([value, label]) => (
+            <option value="">Todos os status</option>
+            {Object.entries(reportStatusLabels).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
-        </label>
-        <strong>{items.length} registros</strong>
-      </div>
-      {message && <p className="notice">{message}</p>}
-      {loading && <div className="empty-state-card">Carregando registros…</div>}
-      {!loading && items.length === 0 && (
-        <div className="empty-state-card">
-          <strong>Nenhuma denúncia neste filtro.</strong>
-          <span>
-            Use o controle de denúncia no recurso que precisa de análise.
-          </span>
+          </Select>
+        </FormField>
+        <p aria-live="polite" className="text-sm font-bold text-vale-muted">
+          {result ? `${result.total} protocolo(s) neste filtro` : 'Carregando'}
+        </p>
+      </Card>
+
+      {message ? (
+        <Alert className="mt-6" title="Não foi possível carregar" tone="danger">
+          <p>{message}</p>
+          <Button
+            className="mt-4"
+            onClick={() => void load()}
+            variant="secondary"
+          >
+            Tentar novamente
+          </Button>
+        </Alert>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-8">
+          <LoadingState label="Carregando denúncias" />
         </div>
-      )}
-      <div className="report-list">
-        {items.map((report) => (
-          <article className="report-summary-card" key={report.id}>
-            <span className={`status-badge status-report-${report.status}`}>
-              {statusLabels[report.status]}
-            </span>
-            <h2>
-              {reasonLabels[report.reason]} em {targetLabels[report.targetType]}
-            </h2>
-            <p>Protocolo {report.id}</p>
-            <time dateTime={report.createdAt}>
-              Registrada em {new Date(report.createdAt).toLocaleString('pt-BR')}
-            </time>
-          </article>
-        ))}
-      </div>
+      ) : null}
+
+      {!loading && !message && reports.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            description="Use o controle de denúncia no recurso que precisa de análise ou escolha outro status."
+            title="Nenhuma denúncia neste filtro"
+          />
+        </div>
+      ) : null}
+
+      {!loading && reports.length ? (
+        <div className="mt-8 grid gap-4">
+          {reports.map((report) => (
+            <Card className="grid gap-4 p-5 sm:p-6" key={report.id}>
+              <div className="flex flex-col gap-3 border-b border-vale-border pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <ReportStatusBadge status={report.status} />
+                  <h2 className="mt-3 text-xl font-black tracking-[-0.03em] text-vale-ink">
+                    {reportReasonLabels[report.reason]} em{' '}
+                    {reportTargetLabels[report.targetType]}
+                  </h2>
+                </div>
+                <time
+                  className="text-sm font-semibold text-vale-muted"
+                  dateTime={report.updatedAt}
+                >
+                  Atualizada em{' '}
+                  {new Date(report.updatedAt).toLocaleString('pt-BR')}
+                </time>
+              </div>
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="font-bold text-vale-muted">Protocolo</dt>
+                  <dd className="mt-1 break-all font-extrabold text-vale-ink">
+                    {report.id}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-bold text-vale-muted">Registrada em</dt>
+                  <dd className="mt-1 font-semibold text-vale-ink">
+                    {new Date(report.createdAt).toLocaleString('pt-BR')}
+                  </dd>
+                </div>
+              </dl>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+
+      {result ? (
+        <Pagination
+          disabled={loading}
+          label="Paginação de denúncias"
+          onPageChange={(page) => void load(page)}
+          page={result.page}
+          totalPages={result.totalPages}
+        />
+      ) : null}
     </section>
   );
 }

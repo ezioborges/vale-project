@@ -1,0 +1,209 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:3001"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+        }
+      ],
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$"
+    }
+  ],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/vagas/[id]",
+      "regex": "^/vagas/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/vagas/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/auditoria",
+      "regex": "^/admin/auditoria(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/auditoria(?:/)?$"
+    },
+    {
+      "page": "/admin/usuarios",
+      "regex": "^/admin/usuarios(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/usuarios(?:/)?$"
+    },
+    {
+      "page": "/app",
+      "regex": "^/app(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app(?:/)?$"
+    },
+    {
+      "page": "/app/candidato",
+      "regex": "^/app/candidato(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/candidato(?:/)?$"
+    },
+    {
+      "page": "/app/candidato/candidaturas",
+      "regex": "^/app/candidato/candidaturas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/candidato/candidaturas(?:/)?$"
+    },
+    {
+      "page": "/app/candidato/denuncias",
+      "regex": "^/app/candidato/denuncias(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/candidato/denuncias(?:/)?$"
+    },
+    {
+      "page": "/app/conta/privacidade",
+      "regex": "^/app/conta/privacidade(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/conta/privacidade(?:/)?$"
+    },
+    {
+      "page": "/app/contratante",
+      "regex": "^/app/contratante(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/contratante(?:/)?$"
+    },
+    {
+      "page": "/app/contratante/denuncias",
+      "regex": "^/app/contratante/denuncias(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/contratante/denuncias(?:/)?$"
+    },
+    {
+      "page": "/app/contratante/vagas",
+      "regex": "^/app/contratante/vagas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/contratante/vagas(?:/)?$"
+    },
+    {
+      "page": "/app/equipe",
+      "regex": "^/app/equipe(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/equipe(?:/)?$"
+    },
+    {
+      "page": "/app/equipe/denuncias",
+      "regex": "^/app/equipe/denuncias(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/equipe/denuncias(?:/)?$"
+    },
+    {
+      "page": "/app/equipe/moderacao",
+      "regex": "^/app/equipe/moderacao(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/app/equipe/moderacao(?:/)?$"
+    },
+    {
+      "page": "/conta-indisponivel",
+      "regex": "^/conta\\-indisponivel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/conta\\-indisponivel(?:/)?$"
+    },
+    {
+      "page": "/laboratorio-ui",
+      "regex": "^/laboratorio\\-ui(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/laboratorio\\-ui(?:/)?$"
+    },
+    {
+      "page": "/onboarding/candidato",
+      "regex": "^/onboarding/candidato(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/onboarding/candidato(?:/)?$"
+    },
+    {
+      "page": "/onboarding/contratante",
+      "regex": "^/onboarding/contratante(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/onboarding/contratante(?:/)?$"
+    },
+    {
+      "page": "/recuperar-senha",
+      "regex": "^/recuperar\\-senha(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/recuperar\\-senha(?:/)?$"
+    },
+    {
+      "page": "/vagas",
+      "regex": "^/vagas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/vagas(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}
