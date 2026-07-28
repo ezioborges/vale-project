@@ -7,8 +7,8 @@ import { Container, PageLayout } from '@/components/ui/layout';
 /** Cabeçalho enxuto e consistente para as jornadas antes da autenticação. */
 export function PublicHeader() {
   return (
-    <header className="border-b border-vale-border bg-vale-surface">
-      <span aria-hidden="true" className="primicias-pride-bar block h-1" />
+    <header className="prismatic-header relative z-40 border-b border-vale-border">
+      <span aria-hidden="true" className="primicias-pride-bar block h-0.5" />
       <Container className="flex min-h-18 flex-wrap items-center justify-between gap-4 py-3">
         <Link aria-label="Primícias — página inicial" href="/">
           <Brand />

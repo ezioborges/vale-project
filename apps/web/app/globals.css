@@ -8,56 +8,58 @@
 
 @theme {
   --font-sans:
-    Arial, Helvetica, ui-sans-serif, system-ui, -apple-system,
+    'Avenir Next', Avenir, Montserrat, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display:
+    Georgia, 'Times New Roman', ui-serif, Cambria, 'Liberation Serif', serif;
 
   /* Fundação semântica: componentes escolhem a função, não o valor visual. */
-  /* Primícias: terra fértil, folhas e o dourado da primeira colheita. */
-  --color-vale-canvas: #faf7f0;
+  /* Semente Prismática: gelo, azul profundo e um espectro de acentos. */
+  --color-vale-canvas: #f5f9fc;
   --color-vale-surface: #ffffff;
-  --color-vale-admin-canvas: #f6f7f4;
-  --color-vale-ink: #19322a;
-  --color-vale-muted: #60706a;
-  --color-vale-border: #e2e6df;
-  --color-vale-border-strong: #b7c5ba;
-  --color-vale-disabled: #f0f1eb;
-  --color-vale-neutral-subtle: #f2f4ee;
-  --color-vale-action: #2f6b4f;
-  --color-vale-action-hover: #24523d;
-  --color-vale-action-subtle: #eaf3ec;
-  --color-vale-focus: #2876a8;
-  --color-vale-success: #2f6b4f;
-  --color-vale-success-strong: #24523d;
-  --color-vale-success-subtle: #e8f3ea;
-  --color-vale-info: #2876a8;
-  --color-vale-info-strong: #1e5a82;
-  --color-vale-info-subtle: #eaf3f8;
-  --color-vale-warning: #a15c18;
-  --color-vale-warning-strong: #70400f;
-  --color-vale-warning-subtle: #fff3df;
-  --color-vale-danger: #a44652;
-  --color-vale-danger-strong: #78303a;
-  --color-vale-danger-subtle: #fff0ef;
+  --color-vale-admin-canvas: #f0f6fa;
+  --color-vale-ink: #082743;
+  --color-vale-muted: #526b7f;
+  --color-vale-border: #d5e6ef;
+  --color-vale-border-strong: #8ebdd3;
+  --color-vale-disabled: #eaf2f6;
+  --color-vale-neutral-subtle: #edf4f7;
+  --color-vale-action: #0a466d;
+  --color-vale-action-hover: #072f4e;
+  --color-vale-action-subtle: #e5f3f9;
+  --color-vale-focus: #087fbd;
+  --color-vale-success: #367b2c;
+  --color-vale-success-strong: #285d21;
+  --color-vale-success-subtle: #edf7e9;
+  --color-vale-info: #087fbd;
+  --color-vale-info-strong: #075d8a;
+  --color-vale-info-subtle: #e7f5fb;
+  --color-vale-warning: #ad6500;
+  --color-vale-warning-strong: #744300;
+  --color-vale-warning-subtle: #fff5df;
+  --color-vale-danger: #b80e2e;
+  --color-vale-danger-strong: #850820;
+  --color-vale-danger-subtle: #fff0f2;
 
   /* Acentos de marca; nunca são a única forma de comunicar um estado. */
   /* Cores da comunidade LGBTQIAPN+: a diversidade sustenta o crescimento. */
-  --color-vale-brand-pink: #d6249f;
-  --color-vale-brand-blue: #2368e8;
-  --color-vale-brand-green: #12815e;
-  --color-vale-brand-orange: #e95f16;
-  --color-vale-brand-yellow: #f7c948;
-  --color-vale-brand-violet: #5b3df5;
+  --color-vale-brand-pink: #d80b2f;
+  --color-vale-brand-blue: #087fc0;
+  --color-vale-brand-green: #3b812d;
+  --color-vale-brand-orange: #f27900;
+  --color-vale-brand-yellow: #ffc000;
+  --color-vale-brand-violet: #66369b;
 
   /* Aliases temporários do laboratório até que todos os consumidores migrem. */
-  --color-vale-line: #e2e6df;
-  --color-vale-soft: #eaf3ec;
-  --color-vale-violet: #2f6b4f;
-  --color-vale-violet-deep: #24523d;
-  --color-vale-pink: #d6249f;
-  --color-vale-blue: #2368e8;
-  --color-vale-green: #12815e;
-  --color-vale-orange: #e95f16;
-  --color-vale-yellow: #f7c948;
+  --color-vale-line: #d5e6ef;
+  --color-vale-soft: #e5f3f9;
+  --color-vale-violet: #66369b;
+  --color-vale-violet-deep: #4d2679;
+  --color-vale-pink: #d80b2f;
+  --color-vale-blue: #087fc0;
+  --color-vale-green: #3b812d;
+  --color-vale-orange: #f27900;
+  --color-vale-yellow: #ffc000;
 
   --spacing-vale-1: 0.25rem;
   --spacing-vale-2: 0.5rem;
@@ -71,11 +73,11 @@
 
   --radius-vale-sm: 0.5rem;
   --radius-vale-md: 0.75rem;
-  --radius-vale-lg: 1rem;
+  --radius-vale-lg: 1.25rem;
 
-  --shadow-vale-card: 0 18px 50px rgb(33 26 53 / 6%);
-  --shadow-vale-action: 0 12px 28px rgb(91 61 245 / 22%);
-  --shadow-vale-dialog: 0 24px 80px rgb(33 26 53 / 24%);
+  --shadow-vale-card: 0 20px 60px rgb(8 39 67 / 8%);
+  --shadow-vale-action: 0 12px 30px rgb(8 70 109 / 22%);
+  --shadow-vale-dialog: 0 28px 90px rgb(8 39 67 / 25%);
 
   --container-vale-content: 80rem;
   --container-vale-wide: 92.5rem;
@@ -87,17 +89,17 @@
   --vale-motion-standard: 240ms;
   --vale-motion-slow: 400ms;
   --vale-motion-easing: cubic-bezier(0.2, 0, 0, 1);
-  --background: #faf7f0;
-  --foreground: #19322a;
-  --muted: #60706a;
-  --line: #e2e6df;
+  --background: #f5f9fc;
+  --foreground: #082743;
+  --muted: #526b7f;
+  --line: #d5e6ef;
   --surface: #ffffff;
-  --surface-strong: #19322a;
-  --accent: #2f6b4f;
-  --accent-strong: #24523d;
-  --rose: #c66b5b;
-  --gold: #a15c18;
-  --focus: #2876a8;
+  --surface-strong: #082743;
+  --accent: #0a466d;
+  --accent-strong: #072f4e;
+  --rose: #d80b2f;
+  --gold: #ad6500;
+  --focus: #087fbd;
 }
 
 * {
@@ -112,7 +114,29 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    'Avenir Next',
+    Avenir,
+    Montserrat,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family:
+    Georgia, 'Times New Roman', ui-serif, Cambria, 'Liberation Serif', serif;
+}
+
+::selection {
+  background: rgb(8 127 189 / 22%);
+  color: var(--foreground);
 }
 
 a {
@@ -167,13 +191,157 @@ button {
 .primicias-pride-bar {
   background: linear-gradient(
     90deg,
-    #e40303 0%,
-    #ff8c00 20%,
-    #ffed00 40%,
-    #008026 60%,
-    #24408e 80%,
-    #732982 100%
+    #d80b2f 0% 16.666%,
+    #f27900 16.666% 33.333%,
+    #ffc000 33.333% 50%,
+    #3b812d 50% 66.666%,
+    #087fc0 66.666% 83.333%,
+    #66369b 83.333% 100%
   );
+}
+
+[data-layout] {
+  background-image:
+    linear-gradient(rgb(115 177 207 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(115 177 207 / 6%) 1px, transparent 1px);
+  background-position: center;
+  background-size: 80px 80px;
+}
+
+.prismatic-header {
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 40px rgb(8 39 67 / 4%);
+  backdrop-filter: blur(18px);
+}
+
+.prismatic-card {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  transition:
+    border-color var(--vale-motion-standard) var(--vale-motion-easing),
+    box-shadow var(--vale-motion-standard) var(--vale-motion-easing);
+}
+
+.prismatic-card::before {
+  background: linear-gradient(
+    90deg,
+    #d80b2f,
+    #f27900,
+    #ffc000,
+    #3b812d,
+    #087fc0,
+    #66369b
+  );
+  content: '';
+  height: 3px;
+  inset: 0 0 auto;
+  opacity: 0.82;
+  position: absolute;
+  z-index: 1;
+}
+
+.prismatic-card:hover {
+  border-color: #b8d7e5;
+  box-shadow: 0 26px 70px rgb(8 39 67 / 11%);
+}
+
+.prismatic-action {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+.prismatic-action::after {
+  background: linear-gradient(
+    90deg,
+    #d80b2f,
+    #f27900,
+    #ffc000,
+    #3b812d,
+    #087fc0,
+    #66369b
+  );
+  content: '';
+  height: 2px;
+  inset: auto 0 0;
+  position: absolute;
+}
+
+.prismatic-hero {
+  background:
+    radial-gradient(circle at 18% 46%, rgb(8 127 192 / 9%), transparent 30%),
+    radial-gradient(circle at 58% 18%, rgb(102 54 155 / 7%), transparent 24%),
+    linear-gradient(135deg, #ffffff 0%, #f3f9fc 50%, #ffffff 100%);
+  position: relative;
+}
+
+.prismatic-hero::before,
+.prismatic-hero::after {
+  border: 1px solid rgb(76 161 201 / 18%);
+  border-radius: 999px;
+  content: '';
+  pointer-events: none;
+  position: absolute;
+}
+
+.prismatic-hero::before {
+  height: min(56vw, 46rem);
+  left: clamp(-20rem, -10vw, -6rem);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(56vw, 46rem);
+}
+
+.prismatic-hero::after {
+  height: min(43vw, 35rem);
+  left: clamp(-13rem, -4vw, -2rem);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(43vw, 35rem);
+}
+
+.prismatic-wordmark {
+  font-family:
+    Georgia, 'Times New Roman', ui-serif, Cambria, 'Liberation Serif', serif;
+}
+
+.prismatic-spectrum {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.prismatic-spectrum span {
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgb(8 39 67 / 8%);
+  display: block;
+  height: 0.55rem;
+  width: 1.8rem;
+}
+
+.prismatic-spectrum span:nth-child(1) {
+  background: #d80b2f;
+}
+
+.prismatic-spectrum span:nth-child(2) {
+  background: #f27900;
+}
+
+.prismatic-spectrum span:nth-child(3) {
+  background: #ffc000;
+}
+
+.prismatic-spectrum span:nth-child(4) {
+  background: #3b812d;
+}
+
+.prismatic-spectrum span:nth-child(5) {
+  background: #087fc0;
+}
+
+.prismatic-spectrum span:nth-child(6) {
+  background: #66369b;
 }
 
 .topbar {
@@ -255,7 +423,7 @@ button {
 }
 
 .segmented-control {
-  background: #eef3f1;
+  background: var(--color-vale-action-subtle);
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -349,7 +517,7 @@ button {
 }
 
 .verification-form button {
-  background: #e3ece9;
+  background: var(--color-vale-action-subtle);
   color: var(--accent-strong);
   font-weight: 800;
 }
@@ -364,7 +532,7 @@ button {
 }
 
 .secondary-action {
-  background: #e3ece9;
+  background: var(--color-vale-action-subtle);
   border: 0;
   border-radius: 6px;
   color: var(--accent-strong);
@@ -445,15 +613,15 @@ button {
 }
 
 .panel-title {
-  color: #b9d8d0;
+  color: #a8d9ef;
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .command-panel code {
-  background: #183b35;
-  border: 1px solid #28544d;
+  background: #0b3657;
+  border: 1px solid #1c5f88;
   border-radius: 6px;
   display: block;
   overflow-wrap: anywhere;
@@ -466,7 +634,7 @@ button {
 }
 
 .content-band.muted {
-  background: #eef3f1;
+  background: var(--color-vale-action-subtle);
 }
 
 .section-heading {
@@ -530,12 +698,12 @@ button {
 }
 
 .status-pill.ready {
-  background: #d9efea;
+  background: var(--color-vale-success-subtle);
   color: var(--accent-strong);
 }
 
 .status-pill.neutral {
-  background: #f6ecd8;
+  background: var(--color-vale-warning-subtle);
   color: var(--gold);
 }
 
@@ -570,7 +738,7 @@ button {
 
 .profile-overview {
   align-content: start;
-  background: #e8f2ef;
+  background: var(--color-vale-info-subtle);
   border-right: 1px solid var(--line);
   display: grid;
   gap: 20px;
@@ -578,7 +746,7 @@ button {
 }
 
 .profile-overview.employer-overview {
-  background: #f2eee8;
+  background: #f4eff8;
 }
 
 .profile-overview h1 {
@@ -847,7 +1015,7 @@ button {
 
 .file-picker {
   align-items: center;
-  background: #e3ece9;
+  background: var(--color-vale-action-subtle);
   border-radius: 6px;
   color: var(--accent-strong);
   cursor: pointer;
@@ -883,8 +1051,8 @@ button {
 }
 
 .visibility-card:has(input:checked) {
-  background: #e9f3f0;
-  border-color: #78ad9f;
+  background: var(--color-vale-action-subtle);
+  border-color: var(--color-vale-info);
 }
 
 .visibility-card input,
@@ -906,7 +1074,7 @@ button {
 }
 
 .activation-control {
-  background: #fbfcfa;
+  background: var(--color-vale-surface);
 }
 
 .form-footer {
@@ -922,7 +1090,7 @@ button {
 }
 
 .profile-message {
-  color: #d5e2de;
+  color: #d7e8f1;
   max-width: 620px;
 }
 
@@ -1004,17 +1172,17 @@ button {
 }
 
 .jobs-filter-panel > p {
-  color: #c7d8d3;
+  color: #c5dce8;
   line-height: 1.7;
   margin: 0;
 }
 
 .jobs-filter-panel .eyebrow {
-  color: #80d4c8;
+  color: #7ed8f4;
 }
 
 .jobs-filter-form {
-  border-top: 1px solid #36504a;
+  border-top: 1px solid #2b526d;
   display: grid;
   gap: 15px;
   padding-top: 24px;
@@ -1032,8 +1200,8 @@ button {
 
 .jobs-filter-form input,
 .jobs-filter-form select {
-  background: #183b35;
-  border: 1px solid #46625c;
+  background: #0b3657;
+  border: 1px solid #3e6881;
   border-radius: 7px;
   color: white;
   min-height: 46px;
@@ -1042,11 +1210,11 @@ button {
 }
 
 .jobs-filter-form input::placeholder {
-  color: #a8bdb7;
+  color: #a9c1d0;
 }
 
 .jobs-results {
-  background: #f7f8f5;
+  background: var(--color-vale-canvas);
   padding: clamp(32px, 5vw, 64px);
 }
 
@@ -1099,7 +1267,7 @@ button {
 }
 
 .job-card:hover {
-  border-color: #84aaa0;
+  border-color: var(--color-vale-border-strong);
   transform: translateY(-2px);
 }
 
@@ -1114,7 +1282,7 @@ button {
 .job-card-meta span,
 .job-facts span,
 .tag-list span {
-  background: #e8f2ef;
+  background: var(--color-vale-info-subtle);
   border-radius: 999px;
   color: var(--accent-strong);
   font-size: 0.76rem;
@@ -1363,8 +1531,8 @@ button {
 
 .management-toolbar {
   align-items: end;
-  background: #e8f2ef;
-  border: 1px solid #c7dcd6;
+  background: var(--color-vale-info-subtle);
+  border: 1px solid var(--color-vale-border);
   border-radius: 10px;
   display: flex;
   gap: 18px;
@@ -1411,7 +1579,7 @@ button {
 }
 
 .status-timeline {
-  border-left: 2px solid #b7d2cb;
+  border-left: 2px solid var(--color-vale-border-strong);
   display: grid;
   gap: 16px;
   list-style: none;
@@ -1457,8 +1625,8 @@ button {
 
 .status-pending_review,
 .status-submitted {
-  background: #f6ecd8;
-  color: #7d5100;
+  background: var(--color-vale-warning-subtle);
+  color: var(--color-vale-warning-strong);
 }
 
 .status-changes_requested,
@@ -1469,20 +1637,20 @@ button {
 
 .status-approved,
 .status-shortlisted {
-  background: #d9efea;
-  color: var(--accent-strong);
+  background: var(--color-vale-success-subtle);
+  color: var(--color-vale-success-strong);
 }
 
 .status-rejected,
 .status-cancelled,
 .status-closed {
-  background: #f4e2e7;
-  color: #8c2842;
+  background: var(--color-vale-danger-subtle);
+  color: var(--color-vale-danger-strong);
 }
 
 .status-paused {
-  background: #ece9e2;
-  color: #665e50;
+  background: var(--color-vale-neutral-subtle);
+  color: var(--color-vale-muted);
 }
 
 .management-grid {
@@ -1619,7 +1787,7 @@ button {
 }
 
 .moderation-copy section {
-  background: #f7f8f5;
+  background: var(--color-vale-canvas);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 18px;
@@ -1637,7 +1805,7 @@ button {
 }
 
 .moderation-actions {
-  background: #eef3f1;
+  background: var(--color-vale-action-subtle);
   border-radius: 9px;
   display: grid;
   gap: 16px;
@@ -1788,8 +1956,8 @@ button {
 }
 
 .status-report-open {
-  background: #f6ecd8;
-  color: #7d5100;
+  background: var(--color-vale-warning-subtle);
+  color: var(--color-vale-warning-strong);
 }
 
 .status-report-in_review {
@@ -1798,21 +1966,21 @@ button {
 }
 
 .status-report-resolved {
-  background: #d9efea;
-  color: var(--accent-strong);
+  background: var(--color-vale-success-subtle);
+  color: var(--color-vale-success-strong);
 }
 
 .status-report-dismissed {
-  background: #ece9e2;
-  color: #665e50;
+  background: var(--color-vale-neutral-subtle);
+  color: var(--color-vale-muted);
 }
 
 .report-filters,
 .admin-filter-bar,
 .audit-filter-form {
   align-items: end;
-  background: #e8f2ef;
-  border: 1px solid #c7dcd6;
+  background: var(--color-vale-info-subtle);
+  border: 1px solid var(--color-vale-border);
   border-radius: 10px;
   display: grid;
   gap: 14px;
@@ -2045,23 +2213,23 @@ button {
 }
 
 .status-user-active {
-  background: #d9efea;
-  color: var(--accent-strong);
+  background: var(--color-vale-success-subtle);
+  color: var(--color-vale-success-strong);
 }
 
 .status-user-pending_email {
-  background: #f6ecd8;
-  color: #7d5100;
+  background: var(--color-vale-warning-subtle);
+  color: var(--color-vale-warning-strong);
 }
 
 .status-user-suspended {
-  background: #f4e2e7;
-  color: #8c2842;
+  background: var(--color-vale-danger-subtle);
+  color: var(--color-vale-danger-strong);
 }
 
 .status-user-disabled {
-  background: #ece9e2;
-  color: #665e50;
+  background: var(--color-vale-neutral-subtle);
+  color: var(--color-vale-muted);
 }
 
 .audit-filter-form {
@@ -2088,7 +2256,7 @@ button {
 }
 
 .audit-action {
-  background: #e8f2ef;
+  background: var(--color-vale-info-subtle);
   border-radius: 999px;
   color: var(--accent-strong);
   font-size: 0.78rem;
@@ -2130,9 +2298,9 @@ button {
 }
 
 .audit-card pre {
-  background: #18231f;
+  background: var(--color-vale-ink);
   border-radius: 8px;
-  color: #dcebe6;
+  color: #dcecf4;
   font-size: 0.78rem;
   line-height: 1.5;
   margin: 14px 0 0;

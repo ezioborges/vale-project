@@ -8,7 +8,8 @@ import { Container, PageLayout } from '@/components/ui/layout';
 export default function JobsPage() {
   return (
     <PageLayout>
-      <header className="border-b border-vale-border bg-vale-surface">
+      <header className="prismatic-header relative z-40 border-b border-vale-border">
+        <span aria-hidden="true" className="primicias-pride-bar block h-0.5" />
         <Container
           className="flex min-h-18 flex-wrap items-center justify-between gap-3 py-3"
           size="wide"

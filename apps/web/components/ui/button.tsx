@@ -17,11 +17,12 @@ const baseClasses =
 
 const variantClasses: Record<ActionVariant, string> = {
   primary:
-    'bg-vale-action text-white shadow-vale-action hover:bg-vale-action-hover',
+    'prismatic-action border-0 bg-vale-action !text-white shadow-vale-action hover:bg-vale-action-hover',
   secondary:
-    'border border-vale-border bg-vale-surface text-vale-ink hover:border-vale-action hover:text-vale-action',
-  ghost: 'bg-transparent text-vale-action hover:bg-vale-action-subtle',
-  danger: 'bg-vale-danger text-white hover:bg-vale-danger-strong',
+    'border border-vale-border bg-vale-surface !text-vale-ink hover:border-vale-action hover:!text-vale-action',
+  ghost:
+    'border-0 bg-transparent !text-vale-action hover:bg-vale-action-subtle',
+  danger: 'border-0 bg-vale-danger !text-white hover:bg-vale-danger-strong',
 };
 
 const sizeClasses: Record<ActionSize, string> = {

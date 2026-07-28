@@ -75,12 +75,12 @@ const navigation = [
 ];
 
 const colors = [
-  { name: 'Violeta Vale', hex: '#5B3DF5', className: 'bg-vale-violet' },
-  { name: 'Rosa orgulho', hex: '#D6249F', className: 'bg-vale-pink' },
-  { name: 'Azul confiança', hex: '#2368E8', className: 'bg-vale-blue' },
-  { name: 'Verde avanço', hex: '#12815E', className: 'bg-vale-green' },
-  { name: 'Laranja energia', hex: '#E95F16', className: 'bg-vale-orange' },
-  { name: 'Amarelo luz', hex: '#F7C948', className: 'bg-vale-yellow' },
+  { name: 'Violeta prisma', hex: '#66369B', className: 'bg-vale-violet' },
+  { name: 'Vermelho semente', hex: '#D80B2F', className: 'bg-vale-pink' },
+  { name: 'Azul construção', hex: '#087FC0', className: 'bg-vale-blue' },
+  { name: 'Verde crescimento', hex: '#3B812D', className: 'bg-vale-green' },
+  { name: 'Laranja energia', hex: '#F27900', className: 'bg-vale-orange' },
+  { name: 'Amarelo luz', hex: '#FFC000', className: 'bg-vale-yellow' },
 ];
 
 const rollout = [
@@ -132,7 +132,7 @@ export default function UiLaboratoryPage() {
     <PageLayout className="font-sans">
       <div
         aria-hidden="true"
-        className="h-1.5 bg-gradient-to-r from-vale-pink via-vale-orange via-vale-yellow via-vale-green via-vale-blue to-vale-violet"
+        className="h-0.5 bg-gradient-to-r from-vale-pink via-vale-orange via-vale-yellow via-vale-green via-vale-blue to-vale-violet"
       />
 
       <header className="sticky top-0 z-50 border-b border-vale-line/80 bg-white/90 backdrop-blur-xl">
@@ -292,7 +292,7 @@ export default function UiLaboratoryPage() {
           >
             <PageHeading
               className="mb-8"
-              description="A identidade usa bastante espaço em branco, contraste alto e uma paleta de orgulho aplicada com intenção. O violeta identifica ações e os demais tons organizam categorias e feedbacks."
+              description="A identidade usa espaço em branco, contraste alto, linhas de construção discretas e uma paleta prismática aplicada com intenção. O azul profundo estrutura as ações; o espectro organiza acentos e feedbacks."
               eyebrow="01 · Fundações"
               title="Clareza primeiro. Cor com propósito."
             />
@@ -317,7 +317,7 @@ export default function UiLaboratoryPage() {
             <div className="mt-8 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
               <Card className="p-6 sm:p-8">
                 <SpecimenLabel
-                  detail="Arial / system sans"
+                  detail="Georgia display / system sans"
                   title="Escala tipográfica"
                 />
                 <div className="grid gap-7">

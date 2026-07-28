@@ -253,7 +253,7 @@ export function AuthPanel({
         >
           <button
             aria-pressed={isRegistering}
-            className={`min-h-11 rounded-vale-sm px-3 text-sm font-extrabold transition focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-focus ${
+            className={`min-h-11 rounded-vale-sm border-0 px-3 text-sm font-extrabold transition focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-focus ${
               isRegistering
                 ? 'bg-vale-surface text-vale-ink shadow-sm'
                 : 'text-vale-muted hover:text-vale-action'
@@ -265,7 +265,7 @@ export function AuthPanel({
           </button>
           <button
             aria-pressed={mode === 'login'}
-            className={`min-h-11 rounded-vale-sm px-3 text-sm font-extrabold transition focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-focus ${
+            className={`min-h-11 rounded-vale-sm border-0 px-3 text-sm font-extrabold transition focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-vale-focus ${
               mode === 'login'
                 ? 'bg-vale-surface text-vale-ink shadow-sm'
                 : 'text-vale-muted hover:text-vale-action'
@@ -292,8 +292,8 @@ export function AuthPanel({
         ) : null}
 
         {isRegistering ? (
-          <fieldset className="grid gap-3">
-            <legend className="text-sm font-extrabold text-vale-ink">
+          <fieldset className="m-0 grid gap-3 border-0 p-0">
+            <legend className="px-0 text-sm font-extrabold text-vale-ink">
               Como você quer usar Primícias?
             </legend>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -405,8 +405,8 @@ export function AuthPanel({
         ) : null}
 
         {isRegistering ? (
-          <fieldset className="grid gap-4 border-t border-vale-border pt-5">
-            <legend className="text-sm font-extrabold text-vale-ink">
+          <fieldset className="m-0 grid gap-4 border-x-0 border-b-0 border-t border-vale-border p-0 pt-5">
+            <legend className="px-0 text-sm font-extrabold text-vale-ink">
               Consentimentos obrigatórios
             </legend>
             <p className="-mt-2 text-sm leading-6 text-vale-muted">

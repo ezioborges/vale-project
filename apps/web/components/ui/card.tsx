@@ -19,7 +19,7 @@ export function Card<T extends ElementType = 'article'>({
   return (
     <Component
       className={classNames(
-        'rounded-vale-lg border border-vale-border bg-vale-surface shadow-vale-card',
+        'prismatic-card rounded-vale-lg border border-vale-border bg-vale-surface shadow-vale-card',
         className,
       )}
       {...props}

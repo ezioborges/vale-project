@@ -1,6 +1,6 @@
 import { config } from '@fortawesome/fontawesome-svg-core';
 import '@fortawesome/fontawesome-svg-core/styles.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import './globals.css';
 
@@ -8,7 +8,12 @@ config.autoAddCss = false;
 
 export const metadata: Metadata = {
   title: 'Primícias',
-  description: 'Talento que floresce: uma plataforma de empregabilidade segura e inclusiva.',
+  description:
+    'Talento que floresce: uma plataforma de empregabilidade segura e inclusiva.',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#082743',
 };
 
 export default function RootLayout({

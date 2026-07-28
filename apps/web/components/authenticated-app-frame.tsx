@@ -92,12 +92,16 @@ export function AuthenticatedAppFrame({ children }: { children: ReactNode }) {
     <PageLayout
       kind={user.role === 'admin' ? 'administrative' : 'authenticated'}
     >
-      <header className="border-b border-vale-border bg-vale-surface">
+      <header className="prismatic-header relative z-40 border-b border-vale-border">
+        <span aria-hidden="true" className="primicias-pride-bar block h-0.5" />
         <Container
           className="flex min-h-18 flex-wrap items-center gap-x-6 gap-y-3 py-3"
           size="wide"
         >
-          <Link aria-label="Primícias — área autenticada" href={user.initialPath}>
+          <Link
+            aria-label="Primícias — área autenticada"
+            href={user.initialPath}
+          >
             <Brand />
           </Link>
           <nav
